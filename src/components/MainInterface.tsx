@@ -99,14 +99,14 @@ ${languageInstructions[language as keyof typeof languageInstructions]}. Format y
       
       const prompt = generatePrompt(detailLevel, language);
       
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer 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',
+          'Authorization': 'Bearer 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',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'user',
