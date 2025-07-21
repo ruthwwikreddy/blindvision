@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MainInterfaceProps {
   language: string;
@@ -14,6 +15,8 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [lastDescription, setLastDescription] = useState<string>('');
+  const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -65,97 +68,79 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
     }
   }, [language, toast]);
 
-  const generatePrompt = useCallback((detailLevel: string, language: string) => {
-    const detailInstructions = {
-      small: "Provide a brief, 1-2 sentence description focusing on the most important elements",
-      medium: "Provide a moderate description in 3-4 sentences, including key objects, people, and context",
-      full: "Provide a detailed, comprehensive description that paints a complete picture of the scene, including spatial relationships, emotions, atmosphere, and all relevant details"
-    };
-
-    const languageInstructions = {
-      en: "Respond in clear, natural English",
-      hi: "Respond in clear, natural Hindi (हिंदी में जवाब दें)",
-      te: "Respond in clear, natural Telugu (తెలుగులో సమాధానం ఇవ్వండి)"
-    };
-
-    return `You are an intelligent visual assistant for visually impaired users. Analyze this image and describe what you see. 
-
-${detailInstructions[detailLevel as keyof typeof detailInstructions]}. 
-
-Focus on:
-- People and their actions/expressions
-- Objects and their relationships
-- Spatial layout and environment
-- Any text or signs visible
-- Colors, lighting, and atmosphere
-- Potential safety considerations
-
-${languageInstructions[language as keyof typeof languageInstructions]}. Format your response as natural speech that would be helpful for someone who cannot see the image. Be warm, informative, and considerate.`;
-  }, []);
-
   const analyzeImage = useCallback(async (imageDataUrl: string) => {
     try {
       setIsProcessing(true);
       
-      const prompt = generatePrompt(detailLevel, language);
-      
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer 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',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: prompt
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: imageDataUrl
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
-        }),
+      const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: {
+          imageDataUrl,
+          language,
+          detailLevel
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to analyze image');
       }
 
-      const data = await response.json();
-      const description = data.choices[0]?.message?.content;
-      
-      if (description) {
-        speakText(description);
-        toast({
-          title: "Scene Analysis Complete",
-          description: "Description is being read aloud",
-        });
-      } else {
-        throw new Error('No description received');
+      if (!data || !data.description) {
+        throw new Error('No description received from analysis');
       }
+
+      const { description, timestamp } = data;
+      
+      // Store the description and metadata
+      setLastDescription(description);
+      setLastAnalysis({
+        timestamp,
+        language,
+        detailLevel
+      });
+
+      // Speak the description
+      speakText(description);
+      
+      toast({
+        title: "Scene Analysis Complete",
+        description: "Description is ready and being read aloud",
+      });
+
     } catch (error) {
       console.error('Analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: "Could not analyze the image. Please try again.",
+        description: error.message || "Could not analyze the image. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
     }
-  }, [detailLevel, language, generatePrompt, speakText, toast]);
+  }, [detailLevel, language, speakText, toast]);
+
+  const copyToClipboard = useCallback(async () => {
+    if (!lastDescription) return;
+    
+    try {
+      await navigator.clipboard.writeText(lastDescription);
+      toast({
+        title: "Copied!",
+        description: "Description copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy to clipboard",
+        variant: "destructive"
+      });
+    }
+  }, [lastDescription, toast]);
+
+  const replayDescription = useCallback(() => {
+    if (!lastDescription) return;
+    speakText(lastDescription);
+  }, [lastDescription, speakText]);
 
   const captureImage = useCallback(async () => {
     try {
@@ -256,6 +241,52 @@ ${languageInstructions[language as keyof typeof languageInstructions]}. Format y
         </Card>
       )}
 
+      {/* Description Card */}
+      {lastDescription && (
+        <Card className="absolute bottom-4 left-4 right-4 max-h-64 border-border shadow-soft">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Scene Description</CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  onClick={replayDescription}
+                  variant="outline"
+                  size="sm"
+                  disabled={isSpeaking}
+                  className="h-8 w-8 p-0"
+                >
+                  <Volume2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={copyToClipboard}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="max-h-32 overflow-y-auto text-sm text-muted-foreground mb-3">
+              {lastDescription}
+            </div>
+            {lastAnalysis && (
+              <div className="text-xs text-muted-foreground border-t pt-2">
+                <span className="font-medium">
+                  {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
+                  {lastAnalysis.language === 'en' ? ' English' : 
+                   lastAnalysis.language === 'hi' ? ' Hindi' : ' Telugu'} • 
+                  {lastAnalysis.detailLevel === 'low' ? ' Brief' : 
+                   lastAnalysis.detailLevel === 'medium' ? ' Medium' : ' Detailed'}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
         <div className="space-y-4">
@@ -289,8 +320,8 @@ ${languageInstructions[language as keyof typeof languageInstructions]}. Format y
             {language === 'en' ? 'English' : language === 'hi' ? 'Hindi' : 'Telugu'}
           </span></p>
           <p>Detail Level: <span className="text-primary font-medium">
-            {detailLevel === 'small' ? 'Small Detail' : 
-             detailLevel === 'medium' ? 'Medium Detail' : 'Full Detail'}
+            {detailLevel === 'low' ? 'Brief' : 
+             detailLevel === 'medium' ? 'Medium' : 'Detailed'}
           </span></p>
         </div>
       </div>
