@@ -1,9 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, Camera, Loader2, Volume2, Settings, Copy, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { overlayService } from '@/services/overlayService';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 interface MainInterfaceProps {
   language: string;
@@ -194,6 +197,54 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
       setIsCapturing(false);
     }
   }, [analyzeImage, toast]);
+
+  // Initialize overlay service and handle background functionality
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Initialize the floating overlay for native apps
+      const initializeOverlay = async () => {
+        try {
+          await overlayService.showFloatingButton();
+          
+          // Announce overlay is active
+          speakText("Blind Vision overlay is now active. Tap the floating button from any screen to analyze your surroundings.");
+        } catch (error) {
+          console.error('Failed to initialize overlay:', error);
+          toast({
+            title: "Overlay Setup Failed",
+            description: "Could not create floating button. App will work normally.",
+            variant: "destructive"
+          });
+        }
+      };
+
+      initializeOverlay();
+
+      // Listen for capture requests from the floating button
+      const handleCaptureRequest = () => {
+        captureImage();
+      };
+
+      window.addEventListener('blindvision-capture-request', handleCaptureRequest);
+
+      // Handle app state changes
+      const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
+        if (isActive) {
+          // App became active - ensure overlay is shown
+          overlayService.showFloatingButton();
+        }
+      };
+
+      App.addListener('appStateChange', handleAppStateChange);
+
+      // Cleanup
+      return () => {
+        window.removeEventListener('blindvision-capture-request', handleCaptureRequest);
+        App.removeAllListeners();
+        overlayService.hideFloatingButton();
+      };
+    }
+  }, [captureImage, speakText, toast]);
 
   const isLoading = isCapturing || isProcessing;
 
