@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -41,11 +41,65 @@ export const SetupFlow = ({ onComplete }: SetupFlowProps) => {
   const [language, setLanguage] = useState('en');
   const [detailLevel, setDetailLevel] = useState('medium');
 
+  const speakText = useCallback((text: string) => {
+    console.log('Setup speaking:', text);
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.8;
+      utterance.volume = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
+  // Announce step changes
+  useEffect(() => {
+    const announceStep = () => {
+      if (step === 1) {
+        speakText("Welcome to Blind Vision setup. Step 1 of 2: Please choose your preferred language for voice responses.");
+      } else {
+        speakText("Step 2 of 2: Please select how detailed you want the scene descriptions to be.");
+      }
+    };
+
+    // Delay to ensure page is ready
+    const timer = setTimeout(announceStep, 500);
+    return () => clearTimeout(timer);
+  }, [step, speakText]);
+
+  // Announce welcome on first load
+  useEffect(() => {
+    const welcomeTimer = setTimeout(() => {
+      speakText("Welcome to Blind Vision, your AI-powered sight assistant. Let's set up your preferences with voice guidance.");
+    }, 1000);
+
+    return () => clearTimeout(welcomeTimer);
+  }, [speakText]);
+
   const handleNext = () => {
     if (step === 1) {
+      speakText(`${language === 'en' ? 'English' : language === 'hi' ? 'Hindi' : 'Telugu'} selected. Moving to step 2.`);
       setStep(2);
     } else {
+      const levelText = detailLevel === 'small' ? 'Brief' : detailLevel === 'medium' ? 'Medium' : 'Full';
+      speakText(`${levelText} detail level selected. Setup complete! Starting Blind Vision.`);
       onComplete(language, detailLevel);
+    }
+  };
+
+  const handleLanguageChange = (value: string) => {
+    setLanguage(value);
+    const lang = LANGUAGES.find(l => l.value === value);
+    if (lang) {
+      speakText(`${lang.label} selected`);
+    }
+  };
+
+  const handleDetailChange = (value: string) => {
+    setDetailLevel(value);
+    const level = DETAIL_LEVELS.find(l => l.value === value);
+    if (level) {
+      speakText(`${level.label} selected. ${level.description}`);
     }
   };
 
@@ -94,7 +148,7 @@ export const SetupFlow = ({ onComplete }: SetupFlowProps) => {
           
           <CardContent className="space-y-6">
             {step === 1 ? (
-              <RadioGroup value={language} onValueChange={setLanguage} className="space-y-3">
+              <RadioGroup value={language} onValueChange={handleLanguageChange} className="space-y-3">
                 {LANGUAGES.map((lang) => (
                   <div key={lang.value} className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <RadioGroupItem 
@@ -113,7 +167,7 @@ export const SetupFlow = ({ onComplete }: SetupFlowProps) => {
                 ))}
               </RadioGroup>
             ) : (
-              <RadioGroup value={detailLevel} onValueChange={setDetailLevel} className="space-y-3">
+              <RadioGroup value={detailLevel} onValueChange={handleDetailChange} className="space-y-3">
                 {DETAIL_LEVELS.map((level) => (
                   <div key={level.value} className="flex items-center space-x-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <RadioGroupItem 

@@ -24,45 +24,76 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
-  const speakText = useCallback((text: string) => {
+  const speakText = useCallback((text: string, priority: boolean = false) => {
+    console.log('Speaking text:', text);
+    
     if ('speechSynthesis' in window) {
-      // Stop any ongoing speech
-      window.speechSynthesis.cancel();
+      // Stop any ongoing speech if this is high priority
+      if (priority) {
+        window.speechSynthesis.cancel();
+      }
       
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Configure voice based on language
-      const voices = window.speechSynthesis.getVoices();
-      const languageMap: { [key: string]: string } = {
-        'en': 'en-US',
-        'hi': 'hi-IN', 
-        'te': 'te-IN'
+      // Wait for voices to load if needed
+      const speakWithVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('Available voices:', voices.length);
+        
+        const languageMap: { [key: string]: string } = {
+          'en': 'en-US',
+          'hi': 'hi-IN', 
+          'te': 'te-IN'
+        };
+        
+        const preferredLang = languageMap[language] || 'en-US';
+        const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+        
+        if (voice) {
+          utterance.voice = voice;
+          console.log('Using voice:', voice.name, voice.lang);
+        }
+        
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        utterance.onstart = () => {
+          console.log('Speech started');
+          setIsSpeaking(true);
+        };
+        
+        utterance.onend = () => {
+          console.log('Speech ended');
+          setIsSpeaking(false);
+        };
+        
+        utterance.onerror = (error) => {
+          console.error('Speech error:', error);
+          setIsSpeaking(false);
+          toast({
+            title: "Speech Error",
+            description: "Could not read the description aloud. Check your device volume.",
+            variant: "destructive"
+          });
+        };
+        
+        console.log('Starting speech synthesis');
+        window.speechSynthesis.speak(utterance);
       };
-      
-      const preferredLang = languageMap[language] || 'en-US';
-      const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
-      
-      if (voice) {
-        utterance.voice = voice;
+
+      // If voices aren't loaded yet, wait for them
+      if (window.speechSynthesis.getVoices().length === 0) {
+        console.log('Waiting for voices to load...');
+        window.speechSynthesis.onvoiceschanged = () => {
+          console.log('Voices loaded');
+          speakWithVoice();
+        };
+      } else {
+        speakWithVoice();
       }
-      
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 0.9;
-      
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-        toast({
-          title: "Speech Error",
-          description: "Could not read the description aloud",
-          variant: "destructive"
-        });
-      };
-      
-      window.speechSynthesis.speak(utterance);
     } else {
+      console.error('Speech synthesis not supported');
       toast({
         title: "Speech Not Supported",
         description: "Text-to-speech is not available in this browser",
@@ -198,6 +229,49 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
     }
   }, [analyzeImage, toast]);
 
+  // Initialize audio and welcome message
+  useEffect(() => {
+    // Initialize speech synthesis and give welcome message
+    const initializeAudio = () => {
+      console.log('Initializing audio system');
+      
+      // Force voice loading by creating a dummy utterance
+      if ('speechSynthesis' in window) {
+        const testUtterance = new SpeechSynthesisUtterance('');
+        window.speechSynthesis.speak(testUtterance);
+        window.speechSynthesis.cancel();
+        
+        // Wait a moment, then give welcome message
+        setTimeout(() => {
+          const welcomeMessage = language === 'en' 
+            ? "Welcome to Blind Vision. Your AI-powered sight assistant is ready. Tap the center button to analyze your surroundings."
+            : language === 'hi'
+            ? "ब्लाइंड विजन में आपका स्वागत है। आपका एआई-संचालित दृष्टि सहायक तैयार है। अपने आसपास का विश्लेषण करने के लिए केंद्र बटन दबाएं।"
+            : "బ్లైండ్ విజన్‌కు స్వాగతం. మీ AI-శక్తితో కూడిన దృష్టి సహాయకుడు సిద్ధంగా ఉన్నాడు. మీ చుట్టూ ఉన్న వాటిని విశ్లేషించడానికి మధ్య బటన్‌ను నొక్కండి.";
+          
+          speakText(welcomeMessage, true);
+        }, 1000);
+      }
+    };
+
+    // Initialize audio with user interaction if needed
+    const handleFirstClick = () => {
+      initializeAudio();
+      document.removeEventListener('click', handleFirstClick);
+      document.removeEventListener('touchstart', handleFirstClick);
+    };
+
+    // Try to initialize immediately, but also set up for user interaction
+    initializeAudio();
+    document.addEventListener('click', handleFirstClick);
+    document.addEventListener('touchstart', handleFirstClick);
+
+    return () => {
+      document.removeEventListener('click', handleFirstClick);
+      document.removeEventListener('touchstart', handleFirstClick);
+    };
+  }, [language, speakText]);
+
   // Initialize overlay service and handle background functionality
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -207,7 +281,9 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
           await overlayService.showFloatingButton();
           
           // Announce overlay is active
-          speakText("Blind Vision overlay is now active. Tap the floating button from any screen to analyze your surroundings.");
+          setTimeout(() => {
+            speakText("Floating button is now active across all apps. You can drag it anywhere on your screen.", true);
+          }, 3000);
         } catch (error) {
           console.error('Failed to initialize overlay:', error);
           toast({
