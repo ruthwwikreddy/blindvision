@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, RotateCcw } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
@@ -11,10 +11,12 @@ import { App } from '@capacitor/app';
 interface MainInterfaceProps {
   language: string;
   detailLevel: string;
+  isQuickMode: boolean;
   onSettingsClick: () => void;
+  onQuickModeToggle: () => void;
 }
 
-export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainInterfaceProps) => {
+export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsClick, onQuickModeToggle }: MainInterfaceProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -110,7 +112,8 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
         body: {
           imageDataUrl,
           language,
-          detailLevel
+          detailLevel,
+          isQuickMode
         }
       });
 
@@ -130,15 +133,15 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
       setLastAnalysis({
         timestamp,
         language,
-        detailLevel
+        detailLevel: isQuickMode ? 'quick' : detailLevel
       });
 
       // Speak the description
       speakText(description);
       
       toast({
-        title: "Scene Analysis Complete",
-        description: "Description is ready and being read aloud",
+        title: isQuickMode ? "Quick Analysis Complete" : "Scene Analysis Complete",
+        description: isQuickMode ? "Objects identified and being read aloud" : "Description is ready and being read aloud",
       });
 
     } catch (error) {
@@ -151,7 +154,7 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
     } finally {
       setIsProcessing(false);
     }
-  }, [detailLevel, language, speakText, toast]);
+  }, [detailLevel, language, isQuickMode, speakText, toast]);
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
@@ -330,15 +333,26 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
       <video ref={videoRef} className="hidden" playsInline />
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Settings Button */}
-      <Button
-        onClick={onSettingsClick}
-        variant="outline"
-        size="icon"
-        className="absolute top-4 right-4 border-border hover:bg-muted"
-      >
-        <Settings className="w-4 h-4" />
-      </Button>
+      {/* Control Buttons */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <Button
+          onClick={onQuickModeToggle}
+          variant={isQuickMode ? "default" : "outline"}
+          size="icon"
+          className={`border-border ${isQuickMode ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+          title={isQuickMode ? "Quick Mode Active" : "Enable Quick Mode"}
+        >
+          <Zap className="w-4 h-4" />
+        </Button>
+        <Button
+          onClick={onSettingsClick}
+          variant="outline"
+          size="icon"
+          className="border-border hover:bg-muted"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
+      </div>
 
       {/* Status Display */}
       {(isLoading || isSpeaking) && (
@@ -373,7 +387,10 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
         <Card className="absolute bottom-4 left-4 right-4 max-h-64 border-border shadow-soft">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Scene Description</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                {isQuickMode && <Zap className="w-4 h-4 text-accent" />}
+                {isQuickMode ? "Quick Recognition" : "Scene Description"}
+              </CardTitle>
               <div className="flex gap-2">
                 <Button
                   onClick={replayDescription}
@@ -405,7 +422,8 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
                   {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
                   {lastAnalysis.language === 'en' ? ' English' : 
                    lastAnalysis.language === 'hi' ? ' Hindi' : ' Telugu'} • 
-                  {lastAnalysis.detailLevel === 'low' ? ' Brief' : 
+                  {lastAnalysis.detailLevel === 'quick' ? ' Quick Mode' :
+                   lastAnalysis.detailLevel === 'low' ? ' Brief' : 
                    lastAnalysis.detailLevel === 'medium' ? ' Medium' : ' Detailed'}
                 </span>
               </div>
@@ -419,7 +437,10 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
         <div className="space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Blind Vision</h1>
           <p className="text-lg text-muted-foreground max-w-md">
-            Tap the logo below to capture and analyze your surroundings
+            {isQuickMode 
+              ? "Quick Mode: Tap to instantly identify key objects"
+              : "Tap the logo below to capture and analyze your surroundings"
+            }
           </p>
         </div>
 
@@ -446,16 +467,22 @@ export const MainInterface = ({ language, detailLevel, onSettingsClick }: MainIn
           <p>Language: <span className="text-primary font-medium">
             {language === 'en' ? 'English' : language === 'hi' ? 'Hindi' : 'Telugu'}
           </span></p>
-          <p>Detail Level: <span className="text-primary font-medium">
-            {detailLevel === 'low' ? 'Brief' : 
-             detailLevel === 'medium' ? 'Medium' : 'Detailed'}
+          <p>Mode: <span className={`font-medium ${isQuickMode ? 'text-accent' : 'text-primary'}`}>
+            {isQuickMode ? 'Quick Recognition' : 
+             detailLevel === 'low' ? 'Brief Description' : 
+             detailLevel === 'medium' ? 'Medium Description' : 'Detailed Description'}
           </span></p>
         </div>
       </div>
 
       {/* Instructions */}
       <div className="text-center text-sm text-muted-foreground max-w-sm">
-        <p>This app will describe your surroundings using your camera and read the description aloud.</p>
+        <p>
+          {isQuickMode 
+            ? "Quick mode instantly identifies key objects like chairs, people, doors, and signs for faster navigation assistance."
+            : "This app will describe your surroundings using your camera and read the description aloud."
+          }
+        </p>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ const Index = () => {
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [language, setLanguage] = useState('en');
   const [detailLevel, setDetailLevel] = useState('medium');
+  const [isQuickMode, setIsQuickMode] = useState(false);
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -42,11 +43,13 @@ const Index = () => {
   }
 
   return (
-    <MainInterface 
-      language={language}
-      detailLevel={detailLevel}
-      onSettingsClick={handleSettingsClick}
-    />
+      <MainInterface 
+        language={language}
+        detailLevel={detailLevel}
+        isQuickMode={isQuickMode}
+        onSettingsClick={handleSettingsClick}
+        onQuickModeToggle={() => setIsQuickMode(!isQuickMode)}
+      />
   );
 };
 

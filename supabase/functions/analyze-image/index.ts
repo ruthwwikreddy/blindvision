@@ -28,7 +28,7 @@ serve(async (req) => {
       );
     }
 
-    const { imageDataUrl, language, detailLevel } = await req.json();
+    const { imageDataUrl, language, detailLevel, isQuickMode = false } = await req.json();
     
     if (!imageDataUrl) {
       return new Response(
