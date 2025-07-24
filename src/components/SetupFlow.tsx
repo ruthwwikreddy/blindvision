@@ -7,6 +7,10 @@ import { Eye, Volume2, Settings, Check } from 'lucide-react';
 
 interface SetupFlowProps {
   onComplete: (language: string, detailLevel: string) => void;
+  isSettings?: boolean;
+  currentLanguage?: string;
+  currentDetailLevel?: string;
+  speakText?: (text: string) => void;
 }
 
 const LANGUAGES = [
@@ -36,12 +40,23 @@ const DETAIL_LEVELS = [
   }
 ];
 
-export const SetupFlow = ({ onComplete }: SetupFlowProps) => {
+export const SetupFlow = ({ 
+  onComplete, 
+  isSettings = false, 
+  currentLanguage = 'en', 
+  currentDetailLevel = 'medium', 
+  speakText: propSpeakText 
+}: SetupFlowProps) => {
   const [step, setStep] = useState(1);
-  const [language, setLanguage] = useState('en');
-  const [detailLevel, setDetailLevel] = useState('medium');
+  const [language, setLanguage] = useState(currentLanguage);
+  const [detailLevel, setDetailLevel] = useState(currentDetailLevel);
 
   const speakText = useCallback((text: string) => {
+    if (propSpeakText) {
+      propSpeakText(text);
+      return;
+    }
+    
     console.log('Setup speaking:', text);
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -50,7 +65,7 @@ export const SetupFlow = ({ onComplete }: SetupFlowProps) => {
       utterance.volume = 1;
       window.speechSynthesis.speak(utterance);
     }
-  }, []);
+  }, [propSpeakText]);
 
   // Announce step changes
   useEffect(() => {
