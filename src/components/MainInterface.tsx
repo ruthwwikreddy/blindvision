@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
@@ -21,6 +21,8 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastDescription, setLastDescription] = useState<string>('');
+  const [contextualInfo, setContextualInfo] = useState<string>('');
+  const [isGettingContext, setIsGettingContext] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -178,6 +180,54 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     if (!lastDescription) return;
     speakText(lastDescription);
   }, [lastDescription, speakText]);
+
+  const getContextualInfo = useCallback(async () => {
+    if (!lastDescription) return;
+    
+    try {
+      setIsGettingContext(true);
+      
+      // Extract key objects/items from the description for context query
+      const query = lastDescription.split('.')[0] || lastDescription;
+      
+      const { data, error } = await supabase.functions.invoke('contextual-info', {
+        body: {
+          query,
+          language
+        }
+      });
+
+      if (error) {
+        console.error('Contextual info error:', error);
+        throw new Error(error.message || 'Failed to get contextual information');
+      }
+
+      if (!data || !data.contextualInfo) {
+        throw new Error('No contextual information received');
+      }
+
+      const { contextualInfo } = data;
+      setContextualInfo(contextualInfo);
+      
+      // Speak the contextual information
+      speakText(`Here's additional context: ${contextualInfo}`);
+      
+      toast({
+        title: "Context Added",
+        description: "Additional information is being read aloud",
+      });
+
+    } catch (error) {
+      console.error('Context error:', error);
+      toast({
+        title: "Context Failed",
+        description: error.message || "Could not get additional context.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGettingContext(false);
+    }
+  }, [lastDescription, language, speakText, toast]);
 
   const captureImage = useCallback(async () => {
     try {
@@ -392,6 +442,20 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
                 {isQuickMode ? "Quick Recognition" : "Scene Description"}
               </CardTitle>
               <div className="flex gap-2">
+                <Button
+                  onClick={getContextualInfo}
+                  variant="outline"
+                  size="sm"
+                  disabled={isGettingContext || isSpeaking}
+                  className="h-8 w-8 p-0"
+                  title="Get contextual information"
+                >
+                  {isGettingContext ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Info className="w-4 h-4" />
+                  )}
+                </Button>
                 <Button
                   onClick={replayDescription}
                   variant="outline"
