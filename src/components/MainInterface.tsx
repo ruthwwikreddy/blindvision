@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { useImageClassification } from '@/hooks/useImageClassification';
 
 interface MainInterfaceProps {
   language: string;
@@ -23,86 +24,113 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const [lastDescription, setLastDescription] = useState<string>('');
   const [contextualInfo, setContextualInfo] = useState<string>('');
   const [isGettingContext, setIsGettingContext] = useState(false);
-  const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string } | null>(null);
+  const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string; source?: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const { classifyImage, generateQuickDescription, isLoading: isClassifying, isModelLoaded } = useImageClassification();
 
-  const speakText = useCallback((text: string, priority: boolean = false) => {
+  const speakText = useCallback(async (text: string, priority: boolean = false) => {
     console.log('Speaking text:', text);
     
-    if ('speechSynthesis' in window) {
-      // Stop any ongoing speech if this is high priority
-      if (priority) {
-        window.speechSynthesis.cancel();
-      }
+    // Stop any ongoing speech if this is high priority
+    if (priority && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    
+    try {
+      // Try ElevenLabs first
+      setIsSpeaking(true);
       
-      const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Wait for voices to load if needed
-      const speakWithVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        console.log('Available voices:', voices.length);
-        
-        const languageMap: { [key: string]: string } = {
-          'en': 'en-US',
-          'hi': 'hi-IN', 
-          'te': 'te-IN'
-        };
-        
-        const preferredLang = languageMap[language] || 'en-US';
-        const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
-        
-        if (voice) {
-          utterance.voice = voice;
-          console.log('Using voice:', voice.name, voice.lang);
+      const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+        body: {
+          text,
+          language
         }
-        
-        utterance.rate = 0.8;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-        
-        utterance.onstart = () => {
-          console.log('Speech started');
-          setIsSpeaking(true);
-        };
-        
-        utterance.onend = () => {
-          console.log('Speech ended');
-          setIsSpeaking(false);
-        };
-        
-        utterance.onerror = (error) => {
-          console.error('Speech error:', error);
-          setIsSpeaking(false);
-          toast({
-            title: "Speech Error",
-            description: "Could not read the description aloud. Check your device volume.",
-            variant: "destructive"
-          });
-        };
-        
-        console.log('Starting speech synthesis');
-        window.speechSynthesis.speak(utterance);
-      };
-
-      // If voices aren't loaded yet, wait for them
-      if (window.speechSynthesis.getVoices().length === 0) {
-        console.log('Waiting for voices to load...');
-        window.speechSynthesis.onvoiceschanged = () => {
-          console.log('Voices loaded');
-          speakWithVoice();
-        };
-      } else {
-        speakWithVoice();
-      }
-    } else {
-      console.error('Speech synthesis not supported');
-      toast({
-        title: "Speech Not Supported",
-        description: "Text-to-speech is not available in this browser",
-        variant: "destructive"
       });
+
+      if (error) {
+        console.log('ElevenLabs failed, falling back to browser TTS:', error);
+        throw new Error('ElevenLabs unavailable');
+      }
+
+      if (data && data.audioContent) {
+        // Create audio from base64
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))],
+          { type: 'audio/mpeg' }
+        );
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          console.error('Audio playback failed, falling back to browser TTS');
+          fallbackToSpeechSynthesis();
+        };
+        
+        await audio.play();
+        console.log('ElevenLabs speech playing');
+        return;
+      }
+    } catch (error) {
+      console.log('ElevenLabs not available, using browser TTS');
+      setIsSpeaking(false);
+    }
+    
+    // Fallback to browser speech synthesis
+    fallbackToSpeechSynthesis();
+    
+    function fallbackToSpeechSynthesis() {
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        const speakWithVoice = () => {
+          const voices = window.speechSynthesis.getVoices();
+          const languageMap: { [key: string]: string } = {
+            'en': 'en-US',
+            'hi': 'hi-IN', 
+            'te': 'te-IN'
+          };
+          
+          const preferredLang = languageMap[language] || 'en-US';
+          const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+          
+          if (voice) {
+            utterance.voice = voice;
+          }
+          
+          utterance.rate = 0.8;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          
+          utterance.onstart = () => setIsSpeaking(true);
+          utterance.onend = () => setIsSpeaking(false);
+          utterance.onerror = () => {
+            setIsSpeaking(false);
+            toast({
+              title: "Speech Error",
+              description: "Could not read the description aloud.",
+              variant: "destructive"
+            });
+          };
+          
+          window.speechSynthesis.speak(utterance);
+        };
+
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = speakWithVoice;
+        } else {
+          speakWithVoice();
+        }
+      }
     }
   }, [language, toast]);
 
@@ -110,32 +138,89 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     try {
       setIsProcessing(true);
       
-      const { data, error } = await supabase.functions.invoke('analyze-image', {
-        body: {
-          imageDataUrl,
-          language,
-          detailLevel,
-          isQuickMode
-        }
-      });
+      // If quick mode and offline model is loaded, use Hugging Face classification
+      if (isQuickMode && isModelLoaded) {
+        try {
+          const results = await classifyImage(imageDataUrl);
+          const description = generateQuickDescription(results, language);
+          
+          setLastDescription(description);
+          setLastAnalysis({
+            timestamp: new Date().toISOString(),
+            language,
+            detailLevel: 'quick',
+            source: 'huggingface'
+          });
 
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to analyze image');
+          speakText(description);
+          
+          toast({
+            title: "Quick Analysis Complete",
+            description: "Objects identified using offline AI",
+          });
+          return;
+        } catch (hfError) {
+          console.log('Hugging Face classification failed, falling back to OpenAI:', hfError);
+        }
+      }
+      
+      // Try OpenAI first
+      let analysisData = null;
+      let analysisError = null;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('analyze-image', {
+          body: {
+            imageDataUrl,
+            language,
+            detailLevel,
+            isQuickMode
+          }
+        });
+        
+        if (error) throw error;
+        analysisData = data;
+      } catch (error) {
+        console.log('OpenAI analysis failed, trying Claude:', error);
+        analysisError = error;
+        
+        // Try Claude as backup
+        try {
+          const { data, error } = await supabase.functions.invoke('claude-analyze', {
+            body: {
+              imageDataUrl,
+              language,
+              detailLevel,
+              isQuickMode
+            }
+          });
+          
+          if (error) throw error;
+          analysisData = data;
+          
+          toast({
+            title: "Using Claude AI",
+            description: "OpenAI unavailable, using Claude for analysis",
+          });
+        } catch (claudeError) {
+          console.error('Both OpenAI and Claude failed:', claudeError);
+          throw analysisError || claudeError;
+        }
       }
 
-      if (!data || !data.description) {
+      if (!analysisData || !analysisData.description) {
         throw new Error('No description received from analysis');
       }
 
-      const { description, timestamp } = data;
+      const { description, timestamp, source } = analysisData;
       
       // Store the description and metadata
       setLastDescription(description);
       setLastAnalysis({
         timestamp,
         language,
-        detailLevel: isQuickMode ? 'quick' : detailLevel
+        detailLevel: isQuickMode ? 'quick' : detailLevel,
+        source: source || 'openai'
       });
 
       // Speak the description
@@ -156,7 +241,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     } finally {
       setIsProcessing(false);
     }
-  }, [detailLevel, language, isQuickMode, speakText, toast]);
+  }, [detailLevel, language, isQuickMode, speakText, toast, classifyImage, generateQuickDescription, isModelLoaded]);
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
@@ -482,14 +567,16 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
             </div>
             {lastAnalysis && (
               <div className="text-xs text-muted-foreground border-t pt-2">
-                <span className="font-medium">
-                  {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
-                  {lastAnalysis.language === 'en' ? ' English' : 
-                   lastAnalysis.language === 'hi' ? ' Hindi' : ' Telugu'} • 
-                  {lastAnalysis.detailLevel === 'quick' ? ' Quick Mode' :
-                   lastAnalysis.detailLevel === 'low' ? ' Brief' : 
-                   lastAnalysis.detailLevel === 'medium' ? ' Medium' : ' Detailed'}
-                </span>
+                 <span className="font-medium">
+                   {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
+                   {lastAnalysis.language === 'en' ? ' English' : 
+                    lastAnalysis.language === 'hi' ? ' Hindi' : ' Telugu'} • 
+                   {lastAnalysis.detailLevel === 'quick' ? ' Quick Mode' :
+                    lastAnalysis.detailLevel === 'low' ? ' Brief' : 
+                    lastAnalysis.detailLevel === 'medium' ? ' Medium' : ' Detailed'}
+                   {lastAnalysis.source && ` • ${lastAnalysis.source === 'claude' ? 'Claude' : 
+                     lastAnalysis.source === 'huggingface' ? 'Offline' : 'OpenAI'}`}
+                 </span>
               </div>
             )}
           </CardContent>
@@ -536,6 +623,11 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
              detailLevel === 'low' ? 'Brief Description' : 
              detailLevel === 'medium' ? 'Medium Description' : 'Detailed Description'}
           </span></p>
+          {isQuickMode && (
+            <p>AI Status: <span className={`font-medium ${isModelLoaded ? 'text-green-500' : 'text-yellow-500'}`}>
+              {isModelLoaded ? 'Offline Model Ready' : 'Loading Offline Model...'}
+            </span></p>
+          )}
         </div>
       </div>
 
