@@ -38,99 +38,54 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
       window.speechSynthesis.cancel();
     }
     
-    try {
-      // Try ElevenLabs first
-      setIsSpeaking(true);
+    // Use browser's built-in Speech Synthesis API (free)
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
       
-      const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
-        body: {
-          text,
-          language
+      const speakWithVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const languageMap: { [key: string]: string } = {
+          'en': 'en-US',
+          'hi': 'hi-IN', 
+          'te': 'te-IN'
+        };
+        
+        const preferredLang = languageMap[language] || 'en-US';
+        const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+        
+        if (voice) {
+          utterance.voice = voice;
         }
+        
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          toast({
+            title: "Speech Error",
+            description: "Could not read the description aloud.",
+            variant: "destructive"
+          });
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      };
+
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = speakWithVoice;
+      } else {
+        speakWithVoice();
+      }
+    } else {
+      toast({
+        title: "Speech Not Available",
+        description: "Speech synthesis not supported in this browser.",
+        variant: "destructive"
       });
-
-      if (error) {
-        console.log('ElevenLabs failed, falling back to browser TTS:', error);
-        throw new Error('ElevenLabs unavailable');
-      }
-
-      if (data && data.audioContent) {
-        // Create audio from base64
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))],
-          { type: 'audio/mpeg' }
-        );
-        
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        audio.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          console.error('Audio playback failed, falling back to browser TTS');
-          fallbackToSpeechSynthesis();
-        };
-        
-        await audio.play();
-        console.log('ElevenLabs speech playing');
-        return;
-      }
-    } catch (error) {
-      console.log('ElevenLabs not available, using browser TTS');
-      setIsSpeaking(false);
-    }
-    
-    // Fallback to browser speech synthesis
-    fallbackToSpeechSynthesis();
-    
-    function fallbackToSpeechSynthesis() {
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        const speakWithVoice = () => {
-          const voices = window.speechSynthesis.getVoices();
-          const languageMap: { [key: string]: string } = {
-            'en': 'en-US',
-            'hi': 'hi-IN', 
-            'te': 'te-IN'
-          };
-          
-          const preferredLang = languageMap[language] || 'en-US';
-          const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
-          
-          if (voice) {
-            utterance.voice = voice;
-          }
-          
-          utterance.rate = 0.8;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-          
-          utterance.onstart = () => setIsSpeaking(true);
-          utterance.onend = () => setIsSpeaking(false);
-          utterance.onerror = () => {
-            setIsSpeaking(false);
-            toast({
-              title: "Speech Error",
-              description: "Could not read the description aloud.",
-              variant: "destructive"
-            });
-          };
-          
-          window.speechSynthesis.speak(utterance);
-        };
-
-        if (window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.onvoiceschanged = speakWithVoice;
-        } else {
-          speakWithVoice();
-        }
-      }
     }
   }, [language, toast]);
 
