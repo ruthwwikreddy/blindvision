@@ -342,21 +342,36 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
 
       window.addEventListener('blindvision-capture-request', handleCaptureRequest);
 
-      // Handle app state changes
+      // Handle app state changes - maintain overlay even when app goes to background
       const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
-        if (isActive) {
-          // App became active - ensure overlay is shown
+        console.log('App state changed:', isActive);
+        // Always ensure overlay is active, regardless of app state
+        setTimeout(() => {
           overlayService.showFloatingButton();
-        }
+        }, 500);
       };
 
       App.addListener('appStateChange', handleAppStateChange);
+
+      // Handle device pause/resume
+      const handlePause = () => {
+        console.log('App paused - maintaining overlay');
+        // Overlay should persist even when app is paused
+      };
+
+      const handleResume = () => {
+        console.log('App resumed - ensuring overlay');
+        overlayService.showFloatingButton();
+      };
+
+      App.addListener('pause', handlePause);
+      App.addListener('resume', handleResume);
 
       // Cleanup
       return () => {
         window.removeEventListener('blindvision-capture-request', handleCaptureRequest);
         App.removeAllListeners();
-        overlayService.hideFloatingButton();
+        // Don't hide overlay on cleanup - let it persist
       };
     }
   }, [captureImage, speakText, toast]);

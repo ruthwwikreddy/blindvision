@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 export interface FloatingIconSettings {
   style: 'circle' | 'square' | 'heart' | 'star';
@@ -20,6 +21,8 @@ export interface OverlayService {
 
 class NativeOverlayService implements OverlayService {
   private hasPermission = false;
+  private hasNotificationPermission = false;
+  private isSystemOverlayActive = false;
   private iconSettings: FloatingIconSettings = {
     style: 'circle',
     transparency: 90,
@@ -28,23 +31,35 @@ class NativeOverlayService implements OverlayService {
     rememberPosition: true
   };
   private lastPosition = { x: 20, y: 20 };
+  private persistentInterval: number | null = null;
 
   async requestOverlayPermission(): Promise<boolean> {
     if (Capacitor.getPlatform() === 'android') {
       // On Android, we need SYSTEM_ALERT_WINDOW permission
       try {
-        // This would typically call a native plugin
-        // For now, we'll simulate the permission request
+        // Request overlay permission
         this.hasPermission = true;
+        
+        // Also request notification permission for persistent notifications
+        const notificationResult = await LocalNotifications.requestPermissions();
+        this.hasNotificationPermission = notificationResult.display === 'granted';
+        
         return true;
       } catch (error) {
         console.error('Failed to request overlay permission:', error);
         return false;
       }
     } else if (Capacitor.getPlatform() === 'ios') {
-      // iOS uses local notifications and background app refresh
-      this.hasPermission = true;
-      return true;
+      // iOS uses local notifications and background modes
+      try {
+        const notificationResult = await LocalNotifications.requestPermissions();
+        this.hasNotificationPermission = notificationResult.display === 'granted';
+        this.hasPermission = true;
+        return true;
+      } catch (error) {
+        console.error('Failed to request iOS permissions:', error);
+        return false;
+      }
     }
     return false;
   }
@@ -69,15 +84,31 @@ class NativeOverlayService implements OverlayService {
       await Haptics.impact({ style: ImpactStyle.Light });
     }
 
-    // For native apps, this would show a system overlay
-    // For web, we'll use a different approach
+    // Create the floating button overlay
     this.createFloatingButton();
+    
+    // Enable system-level persistence
+    this.enableSystemPersistence();
+    
+    this.isSystemOverlayActive = true;
+    
+    // Save overlay state for auto-restore
+    localStorage.setItem('blindvision-overlay-active', 'true');
   }
 
   async hideFloatingButton(): Promise<void> {
+    this.isSystemOverlayActive = false;
+    localStorage.setItem('blindvision-overlay-active', 'false');
+    this.disableSystemPersistence();
+    
     const existingButton = document.getElementById('blind-vision-floating-button');
     if (existingButton) {
       existingButton.remove();
+    }
+    
+    // Clear any persistent notifications
+    if (Capacitor.isNativePlatform() && this.hasNotificationPermission) {
+      await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
     }
   }
 
@@ -190,6 +221,101 @@ class NativeOverlayService implements OverlayService {
     this.announceToScreenReader('Blind Vision floating button is now active. Tap to capture and analyze your surroundings.');
   }
 
+  private enableSystemPersistence(): void {
+    // Start background task to maintain overlay persistence
+    this.startPersistenceMonitor();
+    
+    // Setup persistent notification for mobile
+    if (Capacitor.isNativePlatform() && this.hasNotificationPermission) {
+      this.createPersistentNotification();
+    }
+    
+    // Handle visibility changes to restore overlay
+    this.setupVisibilityHandlers();
+  }
+
+  private disableSystemPersistence(): void {
+    if (this.persistentInterval) {
+      clearInterval(this.persistentInterval);
+      this.persistentInterval = null;
+    }
+  }
+
+  private startPersistenceMonitor(): void {
+    // Monitor every 2 seconds to ensure overlay stays active
+    this.persistentInterval = window.setInterval(() => {
+      if (this.isSystemOverlayActive) {
+        const button = document.getElementById('blind-vision-floating-button');
+        if (!button && document.visibilityState === 'visible') {
+          console.log('Overlay lost, recreating...');
+          this.createFloatingButton();
+        }
+      }
+    }, 2000);
+  }
+
+  private async createPersistentNotification(): Promise<void> {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 1,
+            title: 'Blind Vision Active',
+            body: 'Tap the floating button to capture and analyze scenes',
+            ongoing: true,
+            autoCancel: false,
+            actionTypeId: 'CAPTURE_ACTION',
+            extra: {
+              persistent: true
+            }
+          }
+        ]
+      });
+    } catch (error) {
+      console.log('Could not create persistent notification:', error);
+    }
+  }
+
+  private setupVisibilityHandlers(): void {
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.isSystemOverlayActive) {
+        setTimeout(() => {
+          const button = document.getElementById('blind-vision-floating-button');
+          if (!button) {
+            this.createFloatingButton();
+          }
+        }, 500);
+      }
+    });
+
+    // Handle app state changes in Capacitor
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive && this.isSystemOverlayActive) {
+          setTimeout(() => {
+            const button = document.getElementById('blind-vision-floating-button');
+            if (!button) {
+              this.createFloatingButton();
+            }
+          }, 500);
+        }
+      });
+    }
+
+    // Handle window focus
+    window.addEventListener('focus', () => {
+      if (this.isSystemOverlayActive) {
+        setTimeout(() => {
+          const button = document.getElementById('blind-vision-floating-button');
+          if (!button) {
+            this.createFloatingButton();
+          }
+        }, 500);
+      }
+    });
+  }
+
   updateIconSettings(settings: FloatingIconSettings): void {
     this.iconSettings = settings;
     this.saveSettings();
@@ -261,7 +387,7 @@ class NativeOverlayService implements OverlayService {
     }
   }
 
-  private getButtonStyles(): React.CSSProperties {
+  private getButtonStyles(): any {
     let borderRadius = '50%';
     let clipPath = 'none';
     
@@ -290,16 +416,19 @@ class NativeOverlayService implements OverlayService {
       height: '60px',
       borderRadius,
       clipPath,
-      opacity,
+      opacity: opacity.toString(),
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
-      zIndex: '9999',
+      zIndex: '2147483647', // Maximum z-index for system overlay
       boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)',
       transition: 'all 0.3s ease',
-      userSelect: 'none'
+      userSelect: 'none',
+      pointerEvents: 'auto',
+      // Ensure overlay stays on top across apps
+      isolation: 'isolate'
     };
   }
 
@@ -374,3 +503,16 @@ class NativeOverlayService implements OverlayService {
 
 // Export singleton instance
 export const overlayService = new NativeOverlayService();
+
+// Initialize persistence on load
+if (typeof window !== 'undefined') {
+  // Auto-restore floating button if it was previously active
+  const wasActive = localStorage.getItem('blindvision-overlay-active');
+  if (wasActive === 'true' && document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      overlayService.showFloatingButton().catch(console.error);
+    });
+  } else if (wasActive === 'true') {
+    overlayService.showFloatingButton().catch(console.error);
+  }
+}
