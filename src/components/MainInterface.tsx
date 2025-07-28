@@ -29,14 +29,39 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   
+  // Audio management refs
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  
+
+  // Function to stop all audio playback
+  const stopAllAudio = useCallback(() => {
+    console.log('Stopping all audio...');
+    
+    // Stop OpenAI TTS audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    
+    // Stop browser speech synthesis
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    
+    if (currentUtteranceRef.current) {
+      currentUtteranceRef.current = null;
+    }
+    
+    setIsSpeaking(false);
+  }, []);
 
   const speakText = useCallback(async (text: string, priority: boolean = false) => {
     console.log('Speaking text:', text);
     
-    // Stop any ongoing speech if this is high priority
-    if (priority && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    // ALWAYS stop any ongoing audio/speech first
+    stopAllAudio();
     
     try {
       setIsSpeaking(true);
@@ -67,15 +92,21 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         
+        // Store current audio reference
+        currentAudioRef.current = audio;
+        
         audio.onended = () => {
+          console.log('OpenAI TTS audio ended');
           setIsSpeaking(false);
           URL.revokeObjectURL(audioUrl);
+          currentAudioRef.current = null;
         };
         
         audio.onerror = (e) => {
           console.error('Audio playback failed:', e);
           setIsSpeaking(false);
           URL.revokeObjectURL(audioUrl);
+          currentAudioRef.current = null;
           // Fallback to browser speech
           fallbackToSpeechSynthesis();
         };
@@ -99,6 +130,12 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         const utterance = new SpeechSynthesisUtterance(text);
         
         const speakWithVoice = () => {
+          // Stop any previous utterance
+          if (currentUtteranceRef.current) {
+            window.speechSynthesis.cancel();
+            currentUtteranceRef.current = null;
+          }
+          
           const voices = window.speechSynthesis.getVoices();
           const languageMap: { [key: string]: string } = {
             'en': 'en-US',
@@ -113,6 +150,9 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
             utterance.voice = voice;
           }
           
+          // Store current utterance reference
+          currentUtteranceRef.current = utterance;
+          
           utterance.rate = 0.8;
           utterance.pitch = 1;
           utterance.volume = 1;
@@ -125,11 +165,13 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
           utterance.onend = () => {
             console.log('Browser speech ended');
             setIsSpeaking(false);
+            currentUtteranceRef.current = null;
           };
           
           utterance.onerror = (e) => {
             console.error('Browser speech error:', e);
             setIsSpeaking(false);
+            currentUtteranceRef.current = null;
             toast({
               title: "Speech Temporarily Unavailable", 
               description: "Audio feedback is currently experiencing issues. Your description is still available below.",
@@ -165,7 +207,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         });
       }
     }
-  }, [language, toast]);
+  }, [language, toast, stopAllAudio]);
 
   const analyzeImage = useCallback(async (imageDataUrl: string) => {
     try {
@@ -242,7 +284,8 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
 
   const replayDescription = useCallback(() => {
     if (!lastDescription) return;
-    speakText(lastDescription);
+    console.log('Replaying description...');
+    speakText(lastDescription, true); // Use priority to stop current audio
   }, [lastDescription, speakText]);
 
   const getContextualInfo = useCallback(async () => {
