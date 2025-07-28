@@ -38,54 +38,132 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
       window.speechSynthesis.cancel();
     }
     
-    // Use browser's built-in Speech Synthesis API (free)
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
+    try {
+      setIsSpeaking(true);
       
-      const speakWithVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        const languageMap: { [key: string]: string } = {
-          'en': 'en-US',
-          'hi': 'hi-IN', 
-          'te': 'te-IN'
-        };
-        
-        const preferredLang = languageMap[language] || 'en-US';
-        const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
-        
-        if (voice) {
-          utterance.voice = voice;
+      // Try OpenAI TTS first (more reliable)
+      console.log('Attempting OpenAI TTS...');
+      const { data, error } = await supabase.functions.invoke('openai-tts', {
+        body: {
+          text,
+          language,
+          voice: 'alloy'
         }
+      });
+
+      if (error) {
+        console.log('OpenAI TTS failed, falling back to browser speech:', error);
+        throw new Error('OpenAI TTS unavailable');
+      }
+
+      if (data && data.audioContent) {
+        console.log('Playing OpenAI TTS audio');
+        // Create audio from base64
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))],
+          { type: 'audio/mpeg' }
+        );
         
-        utterance.rate = 0.8;
-        utterance.pitch = 1;
-        utterance.volume = 1;
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
         
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => {
+        audio.onended = () => {
           setIsSpeaking(false);
-          toast({
-            title: "Speech Error",
-            description: "Could not read the description aloud.",
-            variant: "destructive"
-          });
+          URL.revokeObjectURL(audioUrl);
         };
         
-        window.speechSynthesis.speak(utterance);
-      };
-
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = speakWithVoice;
-      } else {
-        speakWithVoice();
+        audio.onerror = (e) => {
+          console.error('Audio playback failed:', e);
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          // Fallback to browser speech
+          fallbackToSpeechSynthesis();
+        };
+        
+        await audio.play();
+        console.log('OpenAI TTS audio playing successfully');
+        return;
       }
-    } else {
-      toast({
-        title: "Speech Not Available",
-        description: "Speech synthesis not supported in this browser.",
-        variant: "destructive"
-      });
+    } catch (error) {
+      console.log('OpenAI TTS not available, using browser speech synthesis:', error);
+      setIsSpeaking(false);
+    }
+    
+    // Fallback to browser speech synthesis
+    fallbackToSpeechSynthesis();
+    
+    function fallbackToSpeechSynthesis() {
+      console.log('Using browser speech synthesis fallback');
+      
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        const speakWithVoice = () => {
+          const voices = window.speechSynthesis.getVoices();
+          const languageMap: { [key: string]: string } = {
+            'en': 'en-US',
+            'hi': 'hi-IN', 
+            'te': 'te-IN'
+          };
+          
+          const preferredLang = languageMap[language] || 'en-US';
+          const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+          
+          if (voice) {
+            utterance.voice = voice;
+          }
+          
+          utterance.rate = 0.8;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          
+          utterance.onstart = () => {
+            console.log('Browser speech started');
+            setIsSpeaking(true);
+          };
+          
+          utterance.onend = () => {
+            console.log('Browser speech ended');
+            setIsSpeaking(false);
+          };
+          
+          utterance.onerror = (e) => {
+            console.error('Browser speech error:', e);
+            setIsSpeaking(false);
+            toast({
+              title: "Speech Temporarily Unavailable", 
+              description: "Audio feedback is currently experiencing issues. Your description is still available below.",
+              variant: "destructive"
+            });
+          };
+          
+          try {
+            window.speechSynthesis.speak(utterance);
+            console.log('Browser speech synthesis initiated');
+          } catch (e) {
+            console.error('Failed to start browser speech:', e);
+            setIsSpeaking(false);
+            toast({
+              title: "Speech Not Available",
+              description: "Text-to-speech is not supported. Please read the description below.",
+              variant: "destructive"
+            });
+          }
+        };
+
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = speakWithVoice;
+        } else {
+          speakWithVoice();
+        }
+      } else {
+        setIsSpeaking(false);
+        toast({
+          title: "Speech Not Available",
+          description: "Speech synthesis not supported in this browser. Please read the description below.",
+          variant: "destructive"
+        });
+      }
     }
   }, [language, toast]);
 

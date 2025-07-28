@@ -3,5 +3,8 @@ project_id = "kdgfsjdrqzvzvycxjqzb"
 [functions.analyze-image]
 verify_jwt = false
 
+[functions.openai-tts]
+verify_jwt = false
+
 [functions.contextual-info]  
 verify_jwt = false
