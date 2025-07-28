@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { useImageClassification } from '@/hooks/useImageClassification';
+
 
 interface MainInterfaceProps {
   language: string;
@@ -28,7 +28,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
-  const { classifyImage, generateQuickDescription, isLoading: isClassifying, isModelLoaded } = useImageClassification();
+  
 
   const speakText = useCallback(async (text: string, priority: boolean = false) => {
     console.log('Speaking text:', text);
@@ -93,75 +93,21 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     try {
       setIsProcessing(true);
       
-      // If quick mode and offline model is loaded, use Hugging Face classification
-      if (isQuickMode && isModelLoaded) {
-        try {
-          const results = await classifyImage(imageDataUrl);
-          const description = generateQuickDescription(results, language);
-          
-          setLastDescription(description);
-          setLastAnalysis({
-            timestamp: new Date().toISOString(),
-            language,
-            detailLevel: 'quick',
-            source: 'huggingface'
-          });
-
-          speakText(description);
-          
-          toast({
-            title: "Quick Analysis Complete",
-            description: "Objects identified using offline AI",
-          });
-          return;
-        } catch (hfError) {
-          console.log('Hugging Face classification failed, falling back to OpenAI:', hfError);
+      // Use OpenAI for analysis
+      const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: {
+          imageDataUrl,
+          language,
+          detailLevel,
+          isQuickMode
         }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Analysis failed');
       }
       
-      // Try OpenAI first
-      let analysisData = null;
-      let analysisError = null;
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('analyze-image', {
-          body: {
-            imageDataUrl,
-            language,
-            detailLevel,
-            isQuickMode
-          }
-        });
-        
-        if (error) throw error;
-        analysisData = data;
-      } catch (error) {
-        console.log('OpenAI analysis failed, trying Claude:', error);
-        analysisError = error;
-        
-        // Try Claude as backup
-        try {
-          const { data, error } = await supabase.functions.invoke('claude-analyze', {
-            body: {
-              imageDataUrl,
-              language,
-              detailLevel,
-              isQuickMode
-            }
-          });
-          
-          if (error) throw error;
-          analysisData = data;
-          
-          toast({
-            title: "Using Claude AI",
-            description: "OpenAI unavailable, using Claude for analysis",
-          });
-        } catch (claudeError) {
-          console.error('Both OpenAI and Claude failed:', claudeError);
-          throw analysisError || claudeError;
-        }
-      }
+      const analysisData = data;
 
       if (!analysisData || !analysisData.description) {
         throw new Error('No description received from analysis');
@@ -175,7 +121,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         timestamp,
         language,
         detailLevel: isQuickMode ? 'quick' : detailLevel,
-        source: source || 'openai'
+        source: 'openai'
       });
 
       // Speak the description
@@ -196,7 +142,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     } finally {
       setIsProcessing(false);
     }
-  }, [detailLevel, language, isQuickMode, speakText, toast, classifyImage, generateQuickDescription, isModelLoaded]);
+  }, [detailLevel, language, isQuickMode, speakText, toast]);
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
@@ -578,11 +524,6 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
              detailLevel === 'low' ? 'Brief Description' : 
              detailLevel === 'medium' ? 'Medium Description' : 'Detailed Description'}
           </span></p>
-          {isQuickMode && (
-            <p>AI Status: <span className={`font-medium ${isModelLoaded ? 'text-green-500' : 'text-yellow-500'}`}>
-              {isModelLoaded ? 'Offline Model Ready' : 'Loading Offline Model...'}
-            </span></p>
-          )}
         </div>
       </div>
 
