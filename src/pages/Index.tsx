@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { SetupFlow } from '@/components/SetupFlow';
-import { MainInterface } from '@/components/MainInterface';
+import { EnhancedMainInterface } from '@/components/EnhancedMainInterface';
+import { SettingsMenu } from '@/components/SettingsMenu';
 
 const Index = () => {
-  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [showSetup, setShowSetup] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [language, setLanguage] = useState('en');
   const [detailLevel, setDetailLevel] = useState('medium');
   const [isQuickMode, setIsQuickMode] = useState(false);
@@ -17,14 +19,14 @@ const Index = () => {
     if (setupCompleted && savedLanguage && savedDetailLevel) {
       setLanguage(savedLanguage);
       setDetailLevel(savedDetailLevel);
-      setIsSetupComplete(true);
+      setShowSetup(false);
     }
   }, []);
 
   const handleSetupComplete = (selectedLanguage: string, selectedDetailLevel: string) => {
     setLanguage(selectedLanguage);
     setDetailLevel(selectedDetailLevel);
-    setIsSetupComplete(true);
+    setShowSetup(false);
     
     // Save settings to localStorage
     localStorage.setItem('blindvision-language', selectedLanguage);
@@ -32,24 +34,37 @@ const Index = () => {
     localStorage.setItem('blindvision-setup-complete', 'true');
   };
 
-  const handleSettingsClick = () => {
-    // Reset setup to allow reconfiguration
-    setIsSetupComplete(false);
-    localStorage.removeItem('blindvision-setup-complete');
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
-  if (!isSetupComplete) {
-    return <SetupFlow onComplete={handleSetupComplete} />;
-  }
-
   return (
-      <MainInterface 
-        language={language}
-        detailLevel={detailLevel}
-        isQuickMode={isQuickMode}
-        onSettingsClick={handleSettingsClick}
-        onQuickModeToggle={() => setIsQuickMode(!isQuickMode)}
-      />
+    <div className="min-h-screen bg-background text-foreground">
+      {showSetup ? (
+        <SetupFlow onComplete={handleSetupComplete} speakText={speakText} />
+      ) : showSettings ? (
+        <SettingsMenu 
+          language={language}
+          detailLevel={detailLevel}
+          onClose={() => setShowSettings(false)}
+          onLanguageChange={setLanguage}
+          onDetailLevelChange={setDetailLevel}
+          speakText={speakText}
+        />
+      ) : (
+        <EnhancedMainInterface 
+          language={language}
+          detailLevel={detailLevel}
+          isQuickMode={isQuickMode}
+          onSettingsClick={() => setShowSettings(true)}
+          onQuickModeToggle={() => setIsQuickMode(!isQuickMode)}
+        />
+      )}
+    </div>
   );
 };
 

@@ -12,7 +12,6 @@ import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
 import '../types/speech.d.ts';
 
-
 interface MainInterfaceProps {
   language: string;
   detailLevel: string;
@@ -21,7 +20,7 @@ interface MainInterfaceProps {
   onQuickModeToggle: () => void;
 }
 
-export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsClick, onQuickModeToggle }: MainInterfaceProps) => {
+export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSettingsClick, onQuickModeToggle }: MainInterfaceProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -42,7 +41,6 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   // Audio management refs
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  
 
   // Function to stop all audio playback
   const stopAllAudio = useCallback(() => {
@@ -223,13 +221,13 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     try {
       setIsProcessing(true);
       
-      // Use OpenAI for analysis
+      // Use OpenAI for analysis with mode-specific prompts
       const { data, error } = await supabase.functions.invoke('analyze-image', {
         body: {
           imageDataUrl,
           language,
-          detailLevel,
-          isQuickMode
+          detailLevel: currentMode === 'reading' ? 'text-extraction' : currentMode === 'navigation' ? 'navigation-focused' : detailLevel,
+          isQuickMode: currentMode === 'reading' ? false : isQuickMode
         }
       });
       
@@ -245,35 +243,46 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
 
       const { description, timestamp, source } = analysisData;
       
-        // Store the description and metadata
-        setLastDescription(description);
-        setLastAnalysis({
-          timestamp,
-          language,
-          detailLevel: isQuickMode ? 'quick' : detailLevel,
-          source: 'openai'
-        });
+      // Store the description and metadata
+      setLastDescription(description);
+      setLastAnalysis({
+        timestamp,
+        language,
+        detailLevel: isQuickMode ? 'quick' : detailLevel,
+        source: 'openai'
+      });
 
-        // Add to analysis history
-        const newEntry: AnalysisEntry = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: currentMode,
-          description,
-          timestamp,
-          language,
-          metadata: {
-            confidence: 0.9 // Default confidence for OpenAI
-          }
-        };
-        
-        setAnalysisHistory(prev => [newEntry, ...prev.slice(0, 9)]); // Keep last 10
+      // Add to analysis history
+      const newEntry: AnalysisEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: currentMode,
+        description,
+        timestamp,
+        language,
+        metadata: {
+          confidence: 0.9 // Default confidence for OpenAI
+        }
+      };
+      
+      setAnalysisHistory(prev => [newEntry, ...prev.slice(0, 9)]); // Keep last 10
+
+      // Mode-specific speech feedback
+      const modePrefix = currentMode === 'reading' 
+        ? "Text found: " 
+        : currentMode === 'navigation' 
+          ? "Navigation guidance: " 
+          : "";
 
       // Speak the description
-      speakText(description);
+      speakText(modePrefix + description);
       
       toast({
-        title: isQuickMode ? "Quick Analysis Complete" : "Scene Analysis Complete",
-        description: isQuickMode ? "Objects identified and being read aloud" : "Description is ready and being read aloud",
+        title: currentMode === 'reading' ? "Text Analysis Complete" 
+              : currentMode === 'navigation' ? "Navigation Analysis Complete"
+              : isQuickMode ? "Quick Analysis Complete" : "Scene Analysis Complete",
+        description: currentMode === 'reading' ? "Text extracted and being read aloud"
+                   : currentMode === 'navigation' ? "Navigation guidance is being read aloud"
+                   : isQuickMode ? "Objects identified and being read aloud" : "Description is ready and being read aloud",
       });
 
     } catch (error) {
@@ -286,7 +295,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
     } finally {
       setIsProcessing(false);
     }
-  }, [detailLevel, language, isQuickMode, speakText, toast]);
+  }, [detailLevel, language, isQuickMode, speakText, toast, currentMode]);
 
   const captureImage = useCallback(async () => {
     try {
@@ -555,14 +564,14 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         if (lastDescription) {
           replayDescription();
         } else {
-          speakText("మళ్లీ వినడానికి వివరణ లేదు. మొదట చిత్రం తీయండి।");
+          speakText("మళ్లీ వినడానికి వివరణ లేదు. మొదట చిత్రం తీయండి.");
         }
       } else if (command.includes('ఆపు') || command.includes('మూకుపోవు')) {
         speakText("ఆడియో ఆపుతున్నాం.");
         stopAllAudio();
       }
     }
-  }, [language, lastDescription, captureImage, replayDescription, getContextualInfo, copyToClipboard, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio]);
+  }, [language, lastDescription, captureImage, replayDescription, getContextualInfo, copyToClipboard, onSettingsClick, speakText, stopAllAudio, setCurrentMode]);
 
   const toggleVoiceCommands = useCallback(() => {
     setVoiceCommands(!voiceCommands);
@@ -595,10 +604,10 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
         // Wait a moment, then give welcome message
         setTimeout(() => {
           const welcomeMessage = language === 'en' 
-            ? "Welcome to Blind Vision. Your AI-powered sight assistant is ready. Tap the center button to analyze your surroundings."
+            ? "Welcome to Blind Vision. Your comprehensive AI accessibility assistant is ready. Choose your mode and start exploring."
             : language === 'hi'
-            ? "ब्लाइंड विजन में आपका स्वागत है। आपका एआई-संचालित दृष्टि सहायक तैयार है। अपने आसपास का विश्लेषण करने के लिए केंद्र बटन दबाएं।"
-            : "బ్లైండ్ విజన్‌కు స్వాగతం. మీ AI-శక్తితో కూడిన దృష్టి సహాయకుడు సిద్ధంగా ఉన్నాడు. మీ చుట్టూ ఉన్న వాటిని విశ్లేషించడానికి మధ్య బటన్‌ను నొక్కండి.";
+            ? "ब्लाइंड विजन में आपका स्वागत है। आपका व्यापक एआई सुगम्यता सहायक तैयार है। अपना मोड चुनें और अन्वेषण शुरू करें।"
+            : "బ్లైండ్ విజన్‌కు స్వాగతం. మీ సమగ్ర AI ప్రాప్యత సహాయకుడు సిద్ధంగా ఉన్నాడు. మీ మోడ్ ఎంచుకోండి మరియు అన్వేషణ ప్రారంభించండి.";
           
           speakText(welcomeMessage, true);
         }, 1000);
@@ -803,208 +812,243 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   }, [captureImage, speakText, toast]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative">
-      {/* Hidden elements for camera capture */}
-      <video ref={videoRef} className="hidden" playsInline />
-      <canvas ref={canvasRef} className="hidden" />
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20" />
+      <div className="absolute top-20 left-20 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-20 w-48 h-48 bg-accent/10 rounded-full blur-3xl" />
       
-      {/* Control Buttons */}
-      <div className="absolute top-4 right-4 flex gap-2">
-        <Button
-          onClick={toggleVoiceCommands}
-          variant={voiceCommands ? "default" : "outline"}
-          size="icon"
-          className={`border-border ${voiceCommands ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
-          title={voiceCommands ? "Voice Commands Active" : "Enable Voice Commands"}
-          aria-label={voiceCommands ? "Disable voice commands" : "Enable voice commands"}
-        >
-          {isListening ? <Mic className="w-4 h-4 animate-pulse" /> : voiceCommands ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-        </Button>
-        <Button
-          onClick={onQuickModeToggle}
-          variant={isQuickMode ? "default" : "outline"}
-          size="icon"
-          className={`border-border ${isQuickMode ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
-          title={isQuickMode ? "Quick Mode Active" : "Enable Quick Mode"}
-          aria-label={isQuickMode ? "Disable quick mode" : "Enable quick mode"}
-        >
-          <Zap className="w-4 h-4" />
-        </Button>
-        <Button
-          onClick={onSettingsClick}
-          variant="outline"
-          size="icon"
-          className="border-border hover:bg-muted"
-          title="Open Settings"
-          aria-label="Open settings menu"
-        >
-          <Settings className="w-4 h-4" />
-        </Button>
+      {/* Main Content */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 space-y-6">
+        
+        {/* Mode Selector */}
+        <ModeSelector
+          currentMode={currentMode}
+          onModeChange={setCurrentMode}
+          speakText={speakText}
+          voiceCommands={voiceCommands}
+          isListening={isListening}
+        />
+
+        {/* Main Action Area */}
+        <div className="flex flex-col items-center space-y-6">
+        {/* Control Buttons */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          <Button
+            onClick={toggleVoiceCommands}
+            variant={voiceCommands ? "default" : "outline"}
+            size="icon"
+            className={`border-border ${voiceCommands ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+            title={voiceCommands ? "Voice Commands Active" : "Enable Voice Commands"}
+            aria-label={voiceCommands ? "Disable voice commands" : "Enable voice commands"}
+          >
+            {isListening ? <Mic className="w-4 h-4 animate-pulse" /> : voiceCommands ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+          </Button>
+          <Button
+            onClick={onQuickModeToggle}
+            variant={isQuickMode ? "default" : "outline"}
+            size="icon"
+            className={`border-border ${isQuickMode ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+            title={isQuickMode ? "Quick Mode Active" : "Enable Quick Mode"}
+            aria-label={isQuickMode ? "Disable quick mode" : "Enable quick mode"}
+          >
+            <Zap className="w-4 h-4" />
+          </Button>
+          <Button
+            onClick={onSettingsClick}
+            variant="outline"
+            size="icon"
+            className="border-border hover:bg-muted"
+            title="Open Settings"
+            aria-label="Open settings menu"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Capture Button */}
+        <div className="flex flex-col items-center">
+          {/* Mode-specific capture button */}
+          <Button
+            onClick={captureImage}
+            disabled={isLoading}
+            className={`
+              w-32 h-32 rounded-full bg-gradient-primary hover:shadow-glow 
+              transition-all duration-300 shadow-strong
+              ${!isLoading ? 'animate-pulse-glow' : ''}
+              ${isLoading ? 'opacity-75 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
+            `}
+            size="lg"
+            aria-label={
+              isLoading 
+                ? "Processing image..." 
+                : currentMode === 'reading'
+                  ? "Capture and read text"
+                  : currentMode === 'navigation'
+                    ? "Capture for navigation guidance"
+                    : "Take picture and analyze surroundings"
+            }
+            role="button"
+            tabIndex={0}
+          >
+            {isLoading ? (
+              <Loader2 className="w-12 h-12 text-primary-foreground animate-spin" />
+            ) : currentMode === 'reading' ? (
+              <BookOpen className="w-12 h-12 text-primary-foreground" />
+            ) : currentMode === 'navigation' ? (
+              <Navigation className="w-12 h-12 text-primary-foreground" />
+            ) : (
+              <Eye className="w-12 h-12 text-primary-foreground" />
+            )}
+          </Button>
+
+        </div>
+
+        {/* Action Buttons */}
+        {lastDescription && (
+          <div className="flex flex-wrap gap-3 justify-center max-w-sm">
+            <Button
+              onClick={replayDescription}
+              disabled={isSpeaking}
+              variant="outline"
+              size="sm"
+              className="border-border hover:bg-muted flex items-center gap-2"
+              aria-label="Replay the last description"
+            >
+              <Volume2 className="w-4 h-4" />
+              Replay
+            </Button>
+            
+            <Button
+              onClick={copyToClipboard}
+              variant="outline"
+              size="sm"
+              className="border-border hover:bg-muted flex items-center gap-2"
+              aria-label="Copy description to clipboard"
+            >
+              <Copy className="w-4 h-4" />
+              Copy
+            </Button>
+            
+            <Button
+              onClick={getContextualInfo}
+              disabled={isGettingContext}
+              variant="outline"
+              size="sm"
+              className="border-border hover:bg-muted flex items-center gap-2"
+              aria-label="Get additional context about the scene"
+            >
+              {isGettingContext ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Info className="w-4 h-4" />
+              )}
+              More Info
+            </Button>
+          </div>
+        )}
+
+        {/* Instructions */}
+        <div className="text-center text-sm text-muted-foreground max-w-sm">
+          <p>
+            {currentMode === 'reading' 
+              ? "Point your camera at text, documents, signs, or labels to extract and read the text aloud."
+              : currentMode === 'navigation'
+                ? "Capture your surroundings to get navigation guidance and spatial awareness for safe movement."
+                : isQuickMode 
+                  ? "Quick mode instantly identifies key objects like chairs, people, doors, and signs for faster navigation assistance."
+                  : "This app will describe your surroundings using your camera and read the description aloud."
+            }
+          </p>
+          <div className="mt-4 space-y-2">
+            <p className="text-xs">
+              <strong>Voice Commands:</strong> Say "take picture", "replay", "more info", "copy", "settings", "help", or "stop"
+            </p>
+            <p className="text-xs">
+              <strong>Keyboard:</strong> Spacebar (capture), R (replay), C (copy), I (info), S (settings), H (help), Esc (stop)
+            </p>
+            <p className="text-xs">
+              <strong>Mode Switch:</strong> Press 1 (surroundings), 2 (reading), 3 (navigation)
+            </p>
+            {voiceCommands && (
+              <div className="flex items-center justify-center gap-2 text-xs text-accent">
+                <Mic className="w-3 h-3" />
+                <span>Voice commands {isListening ? 'listening' : 'enabled'}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        </div>
+
+        {/* Analysis History */}
+        <AnalysisHistory
+          history={analysisHistory}
+          onReplay={(description) => speakText(description, true)}
+          onClear={() => setAnalysisHistory([])}
+          speakText={speakText}
+        />
+
+        {/* Emergency Panel */}
+        <EmergencyPanel
+          speakText={speakText}
+          currentLocation={currentLocation}
+        />
+
       </div>
 
       {/* Status Display */}
-      {(isLoading || isSpeaking) && (
-        <Card className="absolute top-4 left-4 right-4 border-border shadow-soft">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              {isCapturing && (
-                <>
-                  <Camera className="w-5 h-5 text-primary animate-pulse" />
-                  <span className="text-sm font-medium">Capturing image...</span>
-                </>
-              )}
-              {isProcessing && (
-                <>
-                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                  <span className="text-sm font-medium">Analyzing scene...</span>
-                </>
-              )}
-              {isSpeaking && (
-                <>
-                  <Volume2 className="w-5 h-5 text-accent animate-pulse" />
-                  <span className="text-sm font-medium">Speaking description...</span>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Description Card */}
       {lastDescription && (
-        <Card className="absolute bottom-4 left-4 right-4 max-h-64 border-border shadow-soft">
+        <Card className="absolute bottom-4 left-4 right-4 max-w-md mx-auto border-border shadow-soft">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                {isQuickMode && <Zap className="w-4 h-4 text-accent" />}
-                {isQuickMode ? "Quick Recognition" : "Scene Description"}
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  onClick={getContextualInfo}
-                  variant="outline"
-                  size="sm"
-                  disabled={isGettingContext || isSpeaking}
-                  className="h-8 w-8 p-0"
-                  title="Get contextual information"
-                >
-                  {isGettingContext ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Info className="w-4 h-4" />
-                  )}
-                </Button>
-                <Button
-                  onClick={replayDescription}
-                  variant="outline"
-                  size="sm"
-                  disabled={isSpeaking}
-                  className="h-8 w-8 p-0"
-                >
-                  <Volume2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  onClick={copyToClipboard}
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              Latest {currentMode === 'reading' ? 'Text' : currentMode === 'navigation' ? 'Navigation' : 'Analysis'}
+              {isSpeaking && (
+                <div className="flex items-center gap-1 text-accent">
+                  <Volume2 className="w-4 h-4 animate-pulse" />
+                  <span className="text-xs">Speaking...</span>
+                </div>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="max-h-32 overflow-y-auto text-sm text-muted-foreground mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               {lastDescription}
-            </div>
+            </p>
+            
+            {contextualInfo && (
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-medium text-accent">Additional Context</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {contextualInfo}
+                </p>
+              </div>
+            )}
+            
             {lastAnalysis && (
-              <div className="text-xs text-muted-foreground border-t pt-2">
-                 <span className="font-medium">
-                   {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
-                   {lastAnalysis.language === 'en' ? ' English' : 
-                    lastAnalysis.language === 'hi' ? ' Hindi' : ' Telugu'} • 
-                   {lastAnalysis.detailLevel === 'quick' ? ' Quick Mode' :
-                    lastAnalysis.detailLevel === 'low' ? ' Brief' : 
-                    lastAnalysis.detailLevel === 'medium' ? ' Medium' : ' Detailed'}
-                   {lastAnalysis.source && ` • ${lastAnalysis.source === 'claude' ? 'Claude' : 
-                     lastAnalysis.source === 'huggingface' ? 'Offline' : 'OpenAI'}`}
-                 </span>
+              <div className="mt-3 text-xs text-muted-foreground flex items-center gap-4">
+                <span>
+                  {new Date(lastAnalysis.timestamp).toLocaleTimeString()}
+                </span>
+                <span className="capitalize">
+                  {lastAnalysis.detailLevel} detail
+                </span>
+                <span className="capitalize">
+                  {lastAnalysis.source} powered
+                </span>
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-        <div className="space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Blind Vision</h1>
-          <p className="text-lg text-muted-foreground max-w-md">
-            {isQuickMode 
-              ? "Quick Mode: Tap to instantly identify key objects"
-              : "Tap the logo below to capture and analyze your surroundings"
-            }
-          </p>
-        </div>
-
-        {/* Floating Logo Button */}
-        <Button
-          onClick={captureImage}
-          disabled={isLoading}
-          className={`
-            w-32 h-32 rounded-full bg-gradient-primary hover:shadow-glow 
-            transition-all duration-300 shadow-strong
-            ${!isLoading ? 'animate-pulse-glow' : ''}
-            ${isLoading ? 'opacity-75 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
-          `}
-          size="lg"
-          aria-label={isLoading ? "Processing image..." : "Take picture and analyze surroundings"}
-          role="button"
-          tabIndex={0}
-        >
-          {isLoading ? (
-            <Loader2 className="w-12 h-12 text-primary-foreground animate-spin" />
-          ) : (
-            <Eye className="w-12 h-12 text-primary-foreground" />
-          )}
-        </Button>
-
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <p>Language: <span className="text-primary font-medium">
-            {language === 'en' ? 'English' : language === 'hi' ? 'Hindi' : 'Telugu'}
-          </span></p>
-          <p>Mode: <span className={`font-medium ${isQuickMode ? 'text-accent' : 'text-primary'}`}>
-            {isQuickMode ? 'Quick Recognition' : 
-             detailLevel === 'low' ? 'Brief Description' : 
-             detailLevel === 'medium' ? 'Medium Description' : 'Detailed Description'}
-          </span></p>
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="text-center text-sm text-muted-foreground max-w-sm">
-        <p>
-          {isQuickMode 
-            ? "Quick mode instantly identifies key objects like chairs, people, doors, and signs for faster navigation assistance."
-            : "This app will describe your surroundings using your camera and read the description aloud."
-          }
-        </p>
-        <div className="mt-4 space-y-2">
-          <p className="text-xs">
-            <strong>Voice Commands:</strong> Say "take picture", "replay", "more info", "copy", "settings", "help", or "stop"
-          </p>
-          <p className="text-xs">
-            <strong>Keyboard:</strong> Spacebar (capture), R (replay), C (copy), I (info), S (settings), H (help), Esc (stop)
-          </p>
-          {voiceCommands && (
-            <div className="flex items-center justify-center gap-2 text-xs text-accent">
-              <Mic className="w-3 h-3" />
-              <span>Voice commands {isListening ? 'listening' : 'enabled'}</span>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Hidden elements for camera functionality */}
+      <video ref={videoRef} className="hidden" autoPlay muted playsInline />
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 };
