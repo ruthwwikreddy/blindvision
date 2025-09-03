@@ -85,11 +85,24 @@ export const SetupFlow = ({
   // Announce welcome on first load
   useEffect(() => {
     const welcomeTimer = setTimeout(() => {
-      speakText("Welcome to Blind Vision, your AI-powered sight assistant. Let's set up your preferences with voice guidance.");
+      speakText("Welcome to Blind Vision, your AI-powered sight assistant. Let's set up your preferences with voice guidance. This app is designed for blind and visually impaired users with full voice navigation support.");
     }, 1000);
 
     return () => clearTimeout(welcomeTimer);
   }, [speakText]);
+
+  // Keyboard navigation support
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleNext();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [step, language, detailLevel, speakText]);
 
   const handleNext = () => {
     if (step === 1) {
@@ -140,15 +153,15 @@ export const SetupFlow = ({
 
         <Card className="border-border shadow-soft">
           <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2 text-xl">
+            <CardTitle className="flex items-center justify-center gap-2 text-xl" role="heading" aria-level={2}>
               {step === 1 ? (
                 <>
-                  <Volume2 className="w-5 h-5 text-primary" />
+                  <Volume2 className="w-5 h-5 text-primary" aria-hidden="true" />
                   Choose Your Language
                 </>
               ) : (
                 <>
-                  <Settings className="w-5 h-5 text-primary" />
+                  <Settings className="w-5 h-5 text-primary" aria-hidden="true" />
                   Select Detail Level
                 </>
               )}
@@ -163,42 +176,54 @@ export const SetupFlow = ({
           
           <CardContent className="space-y-6">
             {step === 1 ? (
-              <RadioGroup value={language} onValueChange={handleLanguageChange} className="space-y-3">
+              <RadioGroup 
+                value={language} 
+                onValueChange={handleLanguageChange} 
+                className="space-y-3"
+                aria-label="Select your preferred language"
+              >
                 {LANGUAGES.map((lang) => (
-                  <div key={lang.value} className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                  <div key={lang.value} className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-primary">
                     <RadioGroupItem 
                       value={lang.value} 
                       id={lang.value}
                       className="text-primary border-primary"
+                      aria-describedby={`${lang.value}-desc`}
                     />
                     <Label 
                       htmlFor={lang.value} 
                       className="flex-1 text-base font-medium cursor-pointer"
                     >
                       <div>{lang.label}</div>
-                      <div className="text-sm text-muted-foreground">{lang.native}</div>
+                      <div id={`${lang.value}-desc`} className="text-sm text-muted-foreground">{lang.native}</div>
                     </Label>
                   </div>
                 ))}
               </RadioGroup>
             ) : (
-              <RadioGroup value={detailLevel} onValueChange={handleDetailChange} className="space-y-3">
+              <RadioGroup 
+                value={detailLevel} 
+                onValueChange={handleDetailChange} 
+                className="space-y-3"
+                aria-label="Select description detail level"
+              >
                 {DETAIL_LEVELS.map((level) => (
-                  <div key={level.value} className="flex items-center space-x-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                  <div key={level.value} className="flex items-center space-x-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-primary">
                     <RadioGroupItem 
                       value={level.value} 
                       id={level.value}
                       className="text-primary border-primary"
+                      aria-describedby={`${level.value}-desc`}
                     />
                     <Label 
                       htmlFor={level.value} 
                       className="flex-1 cursor-pointer"
                     >
                       <div className="flex items-center gap-2 text-base font-medium">
-                        <span className="text-lg">{level.icon}</span>
+                        <span className="text-lg" aria-hidden="true">{level.icon}</span>
                         {level.label}
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div id={`${level.value}-desc`} className="text-sm text-muted-foreground mt-1">
                         {level.description}
                       </div>
                     </Label>
@@ -211,12 +236,13 @@ export const SetupFlow = ({
               onClick={handleNext}
               className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300 text-lg py-6"
               size="lg"
+              aria-label={step === 1 ? "Continue to step 2" : "Complete setup and start using Blind Vision"}
             >
               {step === 1 ? (
                 'Continue'
               ) : (
                 <>
-                  <Check className="w-5 h-5 mr-2" />
+                  <Check className="w-5 h-5 mr-2" aria-hidden="true" />
                   Complete Setup
                 </>
               )}
@@ -224,8 +250,13 @@ export const SetupFlow = ({
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 text-sm text-muted-foreground">
+        <div className="text-center mt-6 text-sm text-muted-foreground" aria-live="polite">
           Step {step} of 2 - Setting up your experience
+        </div>
+        
+        <div className="text-center mt-4 text-xs text-muted-foreground">
+          <p><strong>Navigation:</strong> Use arrow keys to navigate options, Enter or Spacebar to proceed</p>
+          <p><strong>Voice Guidance:</strong> Each option will be announced when selected</p>
         </div>
       </div>
     </div>
