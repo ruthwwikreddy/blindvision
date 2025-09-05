@@ -6,54 +6,58 @@
 
 @layer base {
   :root {
-    /* Accessibility-focused color palette */
-    --background: 210 15% 7%;
-    --foreground: 45 100% 95%;
+    /* Modern accessibility-focused color palette */
+    --background: 220 13% 9%;
+    --foreground: 210 40% 98%;
 
-    --card: 210 15% 10%;
-    --card-foreground: 45 100% 95%;
+    --card: 220 13% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 210 15% 10%;
-    --popover-foreground: 45 100% 95%;
+    --popover: 220 13% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    /* High contrast primary colors for accessibility */
-    --primary: 45 100% 70%;
-    --primary-foreground: 210 15% 7%;
-    --primary-glow: 45 100% 85%;
+    /* Vibrant primary colors for better visual feedback */
+    --primary: 217 91% 60%;
+    --primary-foreground: 220 13% 9%;
+    --primary-glow: 217 91% 75%;
 
-    --secondary: 210 15% 15%;
-    --secondary-foreground: 45 100% 95%;
+    --secondary: 220 13% 16%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 15% 12%;
-    --muted-foreground: 210 10% 70%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 217 32% 65%;
 
-    --accent: 160 100% 60%;
-    --accent-foreground: 210 15% 7%;
+    /* Enhanced accent for better interaction feedback */
+    --accent: 142 76% 36%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 100% 65%;
-    --destructive-foreground: 210 15% 7%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 210 15% 20%;
-    --input: 210 15% 15%;
-    --ring: 45 100% 70%;
+    --border: 220 13% 18%;
+    --input: 220 13% 16%;
+    --ring: 217 91% 60%;
 
-    /* Accessibility enhancements */
-    --focus-ring: 45 100% 70%;
-    --success: 120 60% 55%;
-    --warning: 45 100% 60%;
+    /* Enhanced accessibility colors */
+    --focus-ring: 217 91% 60%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
     
-    /* Gradients for visual appeal */
+    /* Modern gradient system */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(160 100% 75%));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(142 76% 50%));
+    --gradient-mesh: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1));
     
-    /* Shadows for depth */
-    --shadow-soft: 0 4px 12px -2px hsl(var(--primary) / 0.1);
+    /* Enhanced shadow system */
+    --shadow-soft: 0 2px 8px -2px hsl(var(--foreground) / 0.1);
     --shadow-strong: 0 8px 25px -5px hsl(var(--primary) / 0.3);
     --shadow-glow: 0 0 30px hsl(var(--primary) / 0.4);
+    --shadow-neon: 0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.3);
     
-    /* Animation */
+    /* Enhanced animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-spring: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --radius: 1rem;
 
@@ -183,6 +187,58 @@
 
   .skip-link:focus {
     top: 6px;
+  }
+
+  /* Glass morphism utilities */
+  .glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Enhanced interactive states */
+  .interactive {
+    transition: var(--transition-smooth);
+  }
+
+  .interactive:hover {
+    transform: translateY(-2px);
+  }
+
+  .interactive:active {
+    transform: translateY(0);
+  }
+
+  /* Accessibility-first button states */
+  .btn-primary {
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-strong);
+    transition: var(--transition-smooth);
+  }
+
+  .btn-primary:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:focus-visible {
+    outline: 3px solid hsl(var(--primary) / 0.5);
+    outline-offset: 2px;
+  }
+
+  /* Improved text readability */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
   }
   
   /* High contrast mode adjustments */

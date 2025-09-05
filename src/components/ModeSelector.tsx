@@ -61,18 +61,20 @@ export const ModeSelector = ({
   const currentModeData = MODES.find(m => m.id === currentMode);
 
   return (
-    <div className="w-full max-w-md">
-      {/* Current Mode Display */}
-      <Card className="border-border shadow-soft mb-4">
-        <CardContent className="p-4">
+    <div className="w-full max-w-lg">
+      {/* Enhanced Current Mode Display */}
+      <Card className="glass border-2 border-primary/30 backdrop-blur-md shadow-elevated mb-6 overflow-hidden group">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl" aria-hidden="true">{currentModeData?.emoji}</span>
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  {currentModeData?.title}
+            <div className="flex items-center gap-4">
+              <div className="text-4xl animate-float group-hover:scale-110 transition-transform duration-300" aria-hidden="true">
+                {currentModeData?.emoji}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-foreground mb-1 text-balance">
+                  {currentModeData?.title} Mode
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground leading-relaxed text-pretty">
                   {currentModeData?.description}
                 </p>
               </div>
@@ -81,48 +83,79 @@ export const ModeSelector = ({
               onClick={() => setIsExpanded(!isExpanded)}
               variant="outline"
               size="sm"
-              className="border-border hover:bg-muted"
+              className="glass border-2 border-primary/20 backdrop-blur-sm hover:border-primary hover:bg-primary/10 hover:scale-105 transition-all duration-300 px-4 py-2"
               aria-label={isExpanded ? "Collapse mode selector" : "Expand mode selector"}
             >
-              {isExpanded ? "Less" : "Switch"}
+              <span className="font-medium">{isExpanded ? "Close" : "Switch"}</span>
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Voice Commands Status */}
+      {/* Enhanced Voice Commands Status */}
       {voiceCommands && (
-        <div className="mb-4 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-2 bg-accent/20 rounded-full text-sm">
-            <Mic className={`w-4 h-4 ${isListening ? 'text-accent animate-pulse' : 'text-muted-foreground'}`} />
-            <span className="text-foreground">
-              Voice commands {isListening ? 'listening' : 'enabled'}
+        <div className="mb-6 text-center animate-fade-in">
+          <div className={`
+            inline-flex items-center gap-3 px-4 py-3 rounded-full text-sm font-medium
+            glass border-2 backdrop-blur-md transition-all duration-300
+            ${isListening 
+              ? 'border-accent/50 bg-accent/10 text-accent shadow-neon' 
+              : 'border-border/30 bg-muted/5 text-muted-foreground'
+            }
+          `}>
+            <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
+            <span>
+              Voice commands {isListening ? 'listening...' : 'ready'}
             </span>
+            {isListening && (
+              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+            )}
           </div>
         </div>
       )}
 
-      {/* Mode Selection Grid */}
+      {/* Enhanced Mode Selection Grid */}
       {isExpanded && (
-        <div className="grid gap-3 animate-fade-in">
-          {MODES.map((mode) => (
+        <div className="grid gap-4 animate-scale-in">
+          {MODES.map((mode, index) => (
             <Button
               key={mode.id}
               onClick={() => handleModeSelect(mode.id)}
-              variant={currentMode === mode.id ? "default" : "outline"}
+              variant="outline"
               className={`
-                flex items-center gap-3 p-4 h-auto text-left justify-start
-                border-border hover:bg-muted transition-all
-                ${currentMode === mode.id ? 'bg-primary text-primary-foreground shadow-soft' : ''}
+                group relative flex items-center gap-4 p-6 h-auto text-left justify-start overflow-hidden
+                glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:shadow-elevated
+                ${currentMode === mode.id 
+                  ? 'border-primary bg-primary/10 shadow-neon' 
+                  : 'border-border/30 hover:border-primary/50 hover:bg-primary/5'
+                }
               `}
+              style={{ animationDelay: `${index * 0.1}s` }}
               aria-label={`Switch to ${mode.title} mode. ${mode.description}. Press ${mode.shortcut} as shortcut.`}
             >
-              <span className="text-xl" aria-hidden="true">{mode.emoji}</span>
-              <div className="flex-1">
-                <div className="font-medium">{mode.title}</div>
-                <div className="text-sm opacity-80">{mode.description}</div>
+              {/* Background shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              
+              <div className="text-3xl transition-transform duration-300 group-hover:scale-110" aria-hidden="true">
+                {mode.emoji}
               </div>
-              <div className="text-xs opacity-60 bg-white/10 px-2 py-1 rounded">
+              
+              <div className="flex-1 relative z-10">
+                <div className={`font-bold text-lg mb-1 ${currentMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
+                  {mode.title}
+                </div>
+                <div className="text-sm text-muted-foreground leading-relaxed">
+                  {mode.description}
+                </div>
+              </div>
+              
+              <div className={`
+                relative z-10 text-xs font-mono font-bold px-3 py-2 rounded-lg
+                ${currentMode === mode.id 
+                  ? 'bg-primary/20 text-primary border border-primary/30' 
+                  : 'bg-muted/20 text-muted-foreground border border-border/30'
+                }
+              `}>
                 {mode.shortcut}
               </div>
             </Button>
@@ -130,9 +163,22 @@ export const ModeSelector = ({
         </div>
       )}
 
-      <div className="mt-4 text-center text-xs text-muted-foreground">
-        <p><strong>Quick switch:</strong> Press 1, 2, or 3 to change modes</p>
-        <p><strong>Voice:</strong> Say "navigation mode", "reading mode", or "surroundings mode"</p>
+      {/* Enhanced Help Text */}
+      <div className="mt-6 text-center space-y-2">
+        <div className="glass border border-border/20 backdrop-blur-sm rounded-lg p-4">
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p className="flex items-center justify-center gap-2">
+              <span className="font-semibold text-foreground">Quick Switch:</span>
+              <span className="font-mono bg-muted/20 px-2 py-1 rounded">1</span>
+              <span className="font-mono bg-muted/20 px-2 py-1 rounded">2</span>
+              <span className="font-mono bg-muted/20 px-2 py-1 rounded">3</span>
+            </p>
+            <p className="text-center">
+              <span className="font-semibold text-foreground">Voice:</span> 
+              Say "navigation mode", "reading mode", or "surroundings mode"
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
