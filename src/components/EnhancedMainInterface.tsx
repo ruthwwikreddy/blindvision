@@ -812,14 +812,14 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   }, [captureImage, speakText, toast]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden safe-area-top safe-area-bottom">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20" />
       <div className="absolute top-20 left-20 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-20 w-48 h-48 bg-accent/10 rounded-full blur-3xl" />
       
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 space-y-6">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-3 md:p-4 space-y-4 md:space-y-6">
         
         {/* Mode Selector */}
         <ModeSelector

@@ -50,9 +50,15 @@ const Index = () => {
         <SettingsMenu 
           language={language}
           detailLevel={detailLevel}
-          onClose={() => setShowSettings(false)}
-          onLanguageChange={setLanguage}
-          onDetailLevelChange={setDetailLevel}
+          isQuickMode={isQuickMode}
+          onBackClick={() => setShowSettings(false)}
+          onLanguageDetailUpdate={(lang, detail) => {
+            setLanguage(lang);
+            setDetailLevel(detail);
+            localStorage.setItem('blindvision-language', lang);
+            localStorage.setItem('blindvision-detail-level', detail);
+          }}
+          onQuickModeChange={setIsQuickMode}
           speakText={speakText}
         />
       ) : (
