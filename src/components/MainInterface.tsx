@@ -70,19 +70,22 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const speakText = useCallback(async (text: string, priority: boolean = false) => {
     console.log('Speaking text:', text);
     
-    // ALWAYS stop any ongoing audio/speech first
+    // ALWAYS stop any ongoing audio/speech first to prevent overlapping
     stopAllAudio();
+    
+    // Small delay to ensure audio has stopped
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
       setIsSpeaking(true);
       
-      // Try OpenAI TTS first (more reliable)
+      // Try OpenAI TTS first (more reliable and language-consistent)
       console.log('Attempting OpenAI TTS...');
       const { data, error } = await supabase.functions.invoke('openai-tts', {
         body: {
           text,
           language,
-          voice: 'alloy'
+          voice: 'alloy' // Let backend choose appropriate voice for language
         }
       });
 
@@ -92,7 +95,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
       }
 
       if (data && data.audioContent) {
-        console.log('Playing OpenAI TTS audio');
+        console.log('Playing OpenAI TTS audio with language-specific voice');
         // Create audio from base64
         const audioBlob = new Blob(
           [Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))],
@@ -130,11 +133,11 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
       setIsSpeaking(false);
     }
     
-    // Fallback to browser speech synthesis
+    // Fallback to browser speech synthesis with persistent language
     fallbackToSpeechSynthesis();
     
     function fallbackToSpeechSynthesis() {
-      console.log('Using browser speech synthesis fallback');
+      console.log('Using browser speech synthesis fallback with persistent language');
       
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -147,23 +150,48 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
           }
           
           const voices = window.speechSynthesis.getVoices();
-          const languageMap: { [key: string]: string } = {
-            'en': 'en-US',
-            'hi': 'hi-IN', 
-            'te': 'te-IN'
+          
+          // Enhanced language mapping with fallbacks
+          const languageVoiceMap: { [key: string]: string[] } = {
+            'en': ['en-US', 'en-GB', 'en-AU', 'en'],
+            'hi': ['hi-IN', 'hi', 'en-IN'],
+            'te': ['te-IN', 'te', 'hi-IN', 'en-IN'],
+            'es': ['es-ES', 'es-US', 'es-MX', 'es'],
+            'fr': ['fr-FR', 'fr-CA', 'fr'],
+            'de': ['de-DE', 'de-AT', 'de'],
+            'it': ['it-IT', 'it'],
+            'pt': ['pt-BR', 'pt-PT', 'pt'],
+            'ru': ['ru-RU', 'ru'],
+            'ja': ['ja-JP', 'ja'],
+            'ko': ['ko-KR', 'ko'],
+            'zh': ['zh-CN', 'zh-TW', 'zh-HK', 'zh']
           };
           
-          const preferredLang = languageMap[language] || 'en-US';
-          const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+          const preferredLangs = languageVoiceMap[language] || ['en-US'];
+          let selectedVoice = null;
           
-          if (voice) {
-            utterance.voice = voice;
+          // Try to find voice in order of preference
+          for (const lang of preferredLangs) {
+            selectedVoice = voices.find(v => v.lang === lang) || 
+                           voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+            if (selectedVoice) break;
+          }
+          
+          // Fallback to first available voice
+          if (!selectedVoice && voices.length > 0) {
+            selectedVoice = voices[0];
+          }
+          
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            console.log(`Using voice: ${selectedVoice.name} (${selectedVoice.lang}) for language: ${language}`);
           }
           
           // Store current utterance reference
           currentUtteranceRef.current = utterance;
           
-          utterance.rate = 0.8;
+          // Optimized speech settings for clarity
+          utterance.rate = 0.85; // Slightly slower for better comprehension
           utterance.pitch = 1;
           utterance.volume = 1;
           

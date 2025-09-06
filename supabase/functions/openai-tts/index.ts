@@ -42,13 +42,22 @@ serve(async (req) => {
 
     console.log(`Processing TTS request: ${text.substring(0, 50)}...`);
 
-    // Choose voice based on language if not specified
+    // Choose voice based on language for consistency
     let selectedVoice = voice;
     if (voice === 'alloy') {
       const voiceMap: { [key: string]: string } = {
         'en': 'alloy',
         'hi': 'nova',
-        'te': 'shimmer'
+        'te': 'shimmer',
+        'es': 'nova',
+        'fr': 'shimmer', 
+        'de': 'echo',
+        'it': 'fable',
+        'pt': 'nova',
+        'ru': 'echo',
+        'ja': 'shimmer',
+        'ko': 'nova',
+        'zh': 'alloy'
       };
       selectedVoice = voiceMap[language] || 'alloy';
     }

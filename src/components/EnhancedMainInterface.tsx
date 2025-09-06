@@ -145,14 +145,37 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           }
           
           const voices = window.speechSynthesis.getVoices();
-          const languageMap: { [key: string]: string } = {
-            'en': 'en-US',
-            'hi': 'hi-IN', 
-            'te': 'te-IN'
+          
+          // Enhanced language mapping with fallbacks for persistent language support
+          const languageVoiceMap: { [key: string]: string[] } = {
+            'en': ['en-US', 'en-GB', 'en-AU', 'en'],
+            'hi': ['hi-IN', 'hi', 'en-IN'],
+            'te': ['te-IN', 'te', 'hi-IN', 'en-IN'],
+            'es': ['es-ES', 'es-US', 'es-MX', 'es'],
+            'fr': ['fr-FR', 'fr-CA', 'fr'],
+            'de': ['de-DE', 'de-AT', 'de'],
+            'it': ['it-IT', 'it'],
+            'pt': ['pt-BR', 'pt-PT', 'pt'],
+            'ru': ['ru-RU', 'ru'],
+            'ja': ['ja-JP', 'ja'],
+            'ko': ['ko-KR', 'ko'],
+            'zh': ['zh-CN', 'zh-TW', 'zh-HK', 'zh']
           };
           
-          const preferredLang = languageMap[language] || 'en-US';
-          const voice = voices.find(v => v.lang.startsWith(preferredLang.split('-')[0])) || voices[0];
+          const preferredLangs = languageVoiceMap[language] || ['en-US'];
+          let voice = null;
+          
+          // Try to find voice in order of preference
+          for (const lang of preferredLangs) {
+            voice = voices.find(v => v.lang === lang) || 
+                   voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+            if (voice) break;
+          }
+          
+          // Fallback to first available voice
+          if (!voice && voices.length > 0) {
+            voice = voices[0];
+          }
           
           if (voice) {
             utterance.voice = voice;

@@ -87,13 +87,16 @@ class NativeOverlayService implements OverlayService {
     // Create the floating button overlay
     this.createFloatingButton();
     
-    // Enable system-level persistence
+    // Enable system-level persistence (works across all apps)
     this.enableSystemPersistence();
     
     this.isSystemOverlayActive = true;
     
     // Save overlay state for auto-restore
     localStorage.setItem('blindvision-overlay-active', 'true');
+    
+    // Announce accessibility feature
+    this.announceToScreenReader('Blind Vision floating button is now active across all apps. Double tap to capture and analyze your surroundings.');
   }
 
   async hideFloatingButton(): Promise<void> {
@@ -412,8 +415,8 @@ class NativeOverlayService implements OverlayService {
       top: `${position.y}px`,
       right: this.iconSettings.rememberPosition ? 'auto' : '20px',
       left: this.iconSettings.rememberPosition ? `${position.x}px` : 'auto',
-      width: '60px',
-      height: '60px',
+      width: '70px', // Larger for better accessibility
+      height: '70px',
       borderRadius,
       clipPath,
       opacity: opacity.toString(),
@@ -423,12 +426,22 @@ class NativeOverlayService implements OverlayService {
       justifyContent: 'center',
       cursor: 'pointer',
       zIndex: '2147483647', // Maximum z-index for system overlay
-      boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)',
+      boxShadow: '0 8px 35px rgba(102, 126, 234, 0.5), 0 0 20px rgba(102, 126, 234, 0.3)',
       transition: 'all 0.3s ease',
       userSelect: 'none',
       pointerEvents: 'auto',
       // Ensure overlay stays on top across apps
-      isolation: 'isolate'
+      isolation: 'isolate',
+      // High contrast border for visibility
+      border: '3px solid rgba(255, 255, 255, 0.8)',
+      // Accessibility improvements
+      minWidth: '70px',
+      minHeight: '70px',
+      // Make it more prominent
+      backdropFilter: 'blur(10px)',
+      // Prevent overlapping with system UI
+      marginTop: 'env(safe-area-inset-top, 20px)',
+      marginRight: 'env(safe-area-inset-right, 20px)'
     };
   }
 
