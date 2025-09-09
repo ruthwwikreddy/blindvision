@@ -163,23 +163,17 @@ export const ModeSelector = ({
         </div>
       )}
 
-      {/* Enhanced Help Text */}
-      <div className="mt-6 text-center space-y-2">
-        <div className="glass border border-border/20 backdrop-blur-sm rounded-lg p-4">
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p className="flex items-center justify-center gap-2">
-              <span className="font-semibold text-foreground">Quick Switch:</span>
-              <span className="font-mono bg-muted/20 px-2 py-1 rounded">1</span>
-              <span className="font-mono bg-muted/20 px-2 py-1 rounded">2</span>
-              <span className="font-mono bg-muted/20 px-2 py-1 rounded">3</span>
-            </p>
-            <p className="text-center">
-              <span className="font-semibold text-foreground">Voice:</span> 
-              Say "navigation mode", "reading mode", or "surroundings mode"
-            </p>
+      {/* Voice Status Indicator (minimal) */}
+      {voiceCommands && isListening && (
+        <div className="mt-4 flex items-center justify-center">
+          <div className="glass border border-primary/20 backdrop-blur-sm rounded-full px-3 py-1">
+            <div className="flex items-center gap-2 text-xs text-primary">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <span>Listening</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, Mic, MicOff, BookOpen, Navigation } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, Mic, MicOff, BookOpen, Navigation, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
@@ -33,6 +33,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [currentMode, setCurrentMode] = useState<AppMode>('surroundings');
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
+  const [isVoiceInteractionMode, setIsVoiceInteractionMode] = useState(false);
+  const [voiceQuestion, setVoiceQuestion] = useState<string>('');
+  const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -596,6 +599,113 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [language, lastDescription, captureImage, replayDescription, getContextualInfo, copyToClipboard, onSettingsClick, speakText, stopAllAudio, setCurrentMode]);
 
+  // Voice interaction system (separate from voice commands)
+  const initializeVoiceInteraction = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.log('Speech recognition not supported for voice interaction');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-US';
+
+    recognition.onstart = () => {
+      console.log('Voice interaction started');
+    };
+
+    recognition.onresult = (event) => {
+      const result = event.results[0];
+      if (result.isFinal) {
+        const question = result[0].transcript;
+        console.log('Voice question received:', question);
+        setVoiceQuestion(question);
+        processVoiceQuestion(question);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Voice interaction error:', event.error);
+      setIsVoiceInteractionMode(false);
+      if (event.error === 'not-allowed') {
+        speakText("Microphone access denied for voice interaction.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsVoiceInteractionMode(false);
+    };
+
+    return recognition;
+  }, [language]);
+
+  const processVoiceQuestion = useCallback(async (question: string) => {
+    if (!lastDescription && !currentLocation) {
+      speakText("Please take a picture first or ensure location access to ask questions about your surroundings.");
+      return;
+    }
+
+    setIsProcessingQuestion(true);
+    
+    try {
+      const context = lastDescription || "User is asking about their current location and surroundings.";
+      const locationContext = currentLocation ? `, Location: ${currentLocation.lat}, ${currentLocation.lng}` : "";
+      
+      const { data, error } = await supabase.functions.invoke('contextual-info', {
+        body: {
+          query: `Question: "${question}" Context: ${context}${locationContext}`,
+          language
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to process voice question');
+      }
+
+      if (data && data.contextualInfo) {
+        speakText(data.contextualInfo);
+        toast({
+          title: "Question Answered",
+          description: "Voice response is being read aloud",
+        });
+      } else {
+        throw new Error('No response received');
+      }
+    } catch (error) {
+      console.error('Voice question processing error:', error);
+      speakText("Sorry, I couldn't process your question. Please try again.");
+      toast({
+        title: "Voice Question Failed",
+        description: "Could not process your question. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingQuestion(false);
+    }
+  }, [lastDescription, currentLocation, language, speakText, toast]);
+
+  const startVoiceInteraction = useCallback(() => {
+    if (isVoiceInteractionMode) return;
+    
+    const recognition = initializeVoiceInteraction();
+    if (recognition) {
+      setIsVoiceInteractionMode(true);
+      speakText("I'm listening. Ask me about your surroundings or navigation.");
+      
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error('Failed to start voice interaction:', e);
+          setIsVoiceInteractionMode(false);
+        }
+      }, 2000); // Wait for speech to finish
+    }
+  }, [isVoiceInteractionMode, initializeVoiceInteraction, speakText]);
+
   const toggleVoiceCommands = useCallback(() => {
     setVoiceCommands(!voiceCommands);
     if (!voiceCommands) {
@@ -915,48 +1025,65 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             </Button>
           </div>
 
-          {/* Enhanced Capture Button */}
+          {/* Enhanced Capture Button with Voice Interaction */}
           <div className="flex flex-col items-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
-            <Button
-              onClick={captureImage}
-              disabled={isLoading}
-              className={`
-                relative w-36 h-36 md:w-40 md:h-40 rounded-full 
-                bg-gradient-primary hover:shadow-neon transition-all duration-500
-                ${!isLoading ? 'animate-neon-pulse hover:scale-110' : 'animate-pulse'}
-                ${isLoading ? 'opacity-75 cursor-not-allowed' : 'hover:shadow-glow active:scale-95'}
-                shadow-elevated border-2 border-primary/30
-                group overflow-hidden
-              `}
-              size="lg"
-              aria-label={
-                isLoading 
-                  ? "Processing image..." 
-                  : currentMode === 'reading'
-                    ? "Capture and read text"
-                    : currentMode === 'navigation'
-                      ? "Capture for navigation guidance"
-                      : "Take picture and analyze surroundings"
-              }
-              role="button"
-              tabIndex={0}
-            >
-              {/* Background shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              
-              {/* Icon */}
-              <div className="relative z-10">
-                {isLoading ? (
-                  <Loader2 className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground animate-spin" />
-                ) : currentMode === 'reading' ? (
-                  <BookOpen className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
-                ) : currentMode === 'navigation' ? (
-                  <Navigation className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
+            <div className="relative">
+              {/* Voice Interaction Button (slide from left) */}
+              <Button
+                onClick={startVoiceInteraction}
+                disabled={isVoiceInteractionMode || isProcessingQuestion}
+                className={`
+                  absolute -left-20 top-1/2 transform -translate-y-1/2 w-16 h-16 rounded-full
+                  glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105
+                  ${isVoiceInteractionMode 
+                    ? 'bg-accent/20 border-accent text-accent shadow-neon animate-pulse' 
+                    : 'border-border/50 hover:border-accent/50 hover:bg-accent/5'
+                  }
+                  ${isProcessingQuestion ? 'bg-primary/20 border-primary text-primary' : ''}
+                `}
+                title="Voice Interaction - Ask Questions"
+                aria-label="Start voice interaction to ask questions"
+              >
+                {isProcessingQuestion ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : isVoiceInteractionMode ? (
+                  <Mic className="w-6 h-6 animate-pulse" />
                 ) : (
-                  <Eye className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
+                  <MessageCircle className="w-6 h-6" />
                 )}
-              </div>
-            </Button>
+              </Button>
+
+              {/* Main Capture Button */}
+              <Button
+                onClick={captureImage}
+                disabled={isLoading}
+                className={`
+                  relative w-36 h-36 md:w-40 md:h-40 rounded-full 
+                  glass border-4 border-primary/30 backdrop-blur-md transition-all duration-300 hover:scale-105 
+                  bg-gradient-to-br from-primary/20 via-primary/10 to-transparent
+                  shadow-elevated hover:shadow-2xl group overflow-hidden
+                  ${isLoading ? 'animate-pulse' : 'hover:shadow-primary/25 active:scale-95'}
+                `}
+                title={currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings"}
+                aria-label={`${isLoading ? 'Processing...' : 'Take picture and analyze'}`}
+               >
+                {/* Background shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                
+                {/* Icon */}
+                <div className="relative z-10">
+                  {isLoading ? (
+                    <Loader2 className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground animate-spin" />
+                  ) : currentMode === 'reading' ? (
+                    <BookOpen className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
+                  ) : currentMode === 'navigation' ? (
+                    <Navigation className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
+                  ) : (
+                    <Eye className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
+                  )}
+                </div>
+              </Button>
+            </div>
             
             {/* Mode indicator */}
             <div className="mt-4 px-4 py-2 glass rounded-full border border-primary/20">
@@ -1010,35 +1137,16 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           </div>
         )}
 
-        {/* Instructions */}
+        {/* Current Mode Description */}
         <div className="text-center text-sm text-muted-foreground max-w-sm">
           <p>
             {currentMode === 'reading' 
-              ? "Point your camera at text, documents, signs, or labels to extract and read the text aloud."
+              ? "Point your camera at text to read it aloud."
               : currentMode === 'navigation'
-                ? "Capture your surroundings to get navigation guidance and spatial awareness for safe movement."
-                : isQuickMode 
-                  ? "Quick mode instantly identifies key objects like chairs, people, doors, and signs for faster navigation assistance."
-                  : "This app will describe your surroundings using your camera and read the description aloud."
+                ? "Get guidance for safe movement and navigation."
+                : "Describe your surroundings with AI vision."
             }
           </p>
-          <div className="mt-4 space-y-2">
-            <p className="text-xs">
-              <strong>Voice Commands:</strong> Say "take picture", "replay", "more info", "copy", "settings", "help", or "stop"
-            </p>
-            <p className="text-xs">
-              <strong>Keyboard:</strong> Spacebar (capture), R (replay), C (copy), I (info), S (settings), H (help), Esc (stop)
-            </p>
-            <p className="text-xs">
-              <strong>Mode Switch:</strong> Press 1 (surroundings), 2 (reading), 3 (navigation)
-            </p>
-            {voiceCommands && (
-              <div className="flex items-center justify-center gap-2 text-xs text-accent">
-                <Mic className="w-3 h-3" />
-                <span>Voice commands {isListening ? 'listening' : 'enabled'}</span>
-              </div>
-            )}
-          </div>
         </div>
 
         </div>
