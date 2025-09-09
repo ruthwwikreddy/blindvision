@@ -36,6 +36,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [isVoiceInteractionMode, setIsVoiceInteractionMode] = useState(false);
   const [voiceQuestion, setVoiceQuestion] = useState<string>('');
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
+  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -687,24 +688,57 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [lastDescription, currentLocation, language, speakText, toast]);
 
-  const startVoiceInteraction = useCallback(() => {
-    if (isVoiceInteractionMode) return;
+  // Push-to-talk functionality with image capture
+  const startPushToTalk = useCallback(async () => {
+    if (isPushToTalkActive || isVoiceInteractionMode) return;
     
-    const recognition = initializeVoiceInteraction();
-    if (recognition) {
-      setIsVoiceInteractionMode(true);
-      speakText("I'm listening. Ask me about your surroundings or navigation.");
+    try {
+      setIsPushToTalkActive(true);
       
-      setTimeout(() => {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error('Failed to start voice interaction:', e);
-          setIsVoiceInteractionMode(false);
-        }
-      }, 2000); // Wait for speech to finish
+      // First, capture an image immediately
+      console.log('Starting push-to-talk: capturing image...');
+      await captureImage();
+      
+      // Then start voice recognition
+      const recognition = initializeVoiceInteraction();
+      if (recognition) {
+        setIsVoiceInteractionMode(true);
+        
+        // Brief delay to let image processing start, then start listening
+        setTimeout(() => {
+          try {
+            recognition.start();
+            console.log('Voice recognition started for push-to-talk');
+          } catch (e) {
+            console.error('Failed to start voice recognition:', e);
+            setIsVoiceInteractionMode(false);
+            setIsPushToTalkActive(false);
+          }
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Error starting push-to-talk:', error);
+      setIsPushToTalkActive(false);
+      setIsVoiceInteractionMode(false);
     }
-  }, [isVoiceInteractionMode, initializeVoiceInteraction, speakText]);
+  }, [isPushToTalkActive, isVoiceInteractionMode, captureImage, initializeVoiceInteraction]);
+
+  const stopPushToTalk = useCallback(() => {
+    if (!isPushToTalkActive) return;
+    
+    console.log('Stopping push-to-talk');
+    setIsPushToTalkActive(false);
+    setIsVoiceInteractionMode(false);
+    
+    // Stop any active recognition
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.error('Error stopping recognition:', e);
+      }
+    }
+  }, [isPushToTalkActive]);
 
   const toggleVoiceCommands = useCallback(() => {
     setVoiceCommands(!voiceCommands);
@@ -1028,25 +1062,29 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           {/* Enhanced Capture Button with Voice Interaction */}
           <div className="flex flex-col items-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
             <div className="relative">
-              {/* Voice Interaction Button (slide from left) */}
+              {/* Push-to-Talk Button (slide from left) */}
               <Button
-                onClick={startVoiceInteraction}
-                disabled={isVoiceInteractionMode || isProcessingQuestion}
+                onMouseDown={startPushToTalk}
+                onMouseUp={stopPushToTalk}
+                onMouseLeave={stopPushToTalk}
+                onTouchStart={startPushToTalk}
+                onTouchEnd={stopPushToTalk}
+                disabled={isProcessingQuestion || isLoading}
                 className={`
                   absolute -left-20 top-1/2 transform -translate-y-1/2 w-16 h-16 rounded-full
-                  glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105
-                  ${isVoiceInteractionMode 
+                  glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105 select-none
+                  ${isPushToTalkActive || isVoiceInteractionMode
                     ? 'bg-accent/20 border-accent text-accent shadow-neon animate-pulse' 
                     : 'border-border/50 hover:border-accent/50 hover:bg-accent/5'
                   }
                   ${isProcessingQuestion ? 'bg-primary/20 border-primary text-primary' : ''}
                 `}
-                title="Voice Interaction - Ask Questions"
-                aria-label="Start voice interaction to ask questions"
+                title="Push to Talk - Hold to capture image and ask questions"
+                aria-label="Hold to capture image and ask questions about surroundings"
               >
                 {isProcessingQuestion ? (
                   <Loader2 className="w-6 h-6 animate-spin" />
-                ) : isVoiceInteractionMode ? (
+                ) : isPushToTalkActive || isVoiceInteractionMode ? (
                   <Mic className="w-6 h-6 animate-pulse" />
                 ) : (
                   <MessageCircle className="w-6 h-6" />
@@ -1147,6 +1185,15 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                 : "Describe your surroundings with AI vision."
             }
           </p>
+          {/* Push-to-Talk Instructions */}
+          <div className="mt-3 p-3 glass rounded-lg border border-accent/20">
+            <p className="text-xs text-accent font-medium mb-1">
+              Push-to-Talk Voice Questions
+            </p>
+            <p className="text-xs">
+              Hold the chat button to capture image and ask questions about your surroundings
+            </p>
+          </div>
         </div>
 
         </div>
