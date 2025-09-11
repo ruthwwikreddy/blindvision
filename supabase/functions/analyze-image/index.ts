@@ -45,9 +45,9 @@ serve(async (req) => {
     // Generate prompt based on detail level and language
     const generatePrompt = (detailLevel: string, language: string): string => {
       const basePrompts = {
-        low: 'Provide a brief description of this image in a single sentence.',
-        medium: 'Describe this image in detail, including the main objects, people, setting, and any important visual elements.',
-        high: 'Provide a comprehensive and detailed description of this image, including all visible elements, their relationships, colors, lighting, mood, and any text or numbers visible. Be thorough and descriptive.'
+        low: 'Describe what you see in a single sentence. Start directly with what is present, not with "The image shows" or similar phrases.',
+        medium: 'Describe what you see in detail, including the main objects, people, setting, and any important visual elements. Start directly with describing what is present, avoid phrases like "The image shows" or "This image contains".',
+        high: 'Provide a comprehensive and detailed description of what you see, including all visible elements, their relationships, colors, lighting, mood, and any text or numbers visible. Be thorough and descriptive. Start directly with describing what is present, avoid phrases like "The image shows", "This image contains", or similar introductory phrases.'
       };
       
       let prompt = basePrompts[detailLevel as keyof typeof basePrompts] || basePrompts.medium;
