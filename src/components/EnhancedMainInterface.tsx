@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, Mic, MicOff, BookOpen, Navigation, MessageCircle } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, BookOpen, Navigation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
@@ -28,18 +28,11 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [contextualInfo, setContextualInfo] = useState<string>('');
   const [isGettingContext, setIsGettingContext] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string; source?: string } | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [voiceCommands, setVoiceCommands] = useState(true);
   const [currentMode, setCurrentMode] = useState<AppMode>('surroundings');
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
-  const [isVoiceInteractionMode, setIsVoiceInteractionMode] = useState(false);
-  const [voiceQuestion, setVoiceQuestion] = useState<string>('');
-  const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
   
   // Audio management refs
@@ -449,311 +442,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [lastDescription, language, speakText, toast]);
 
-  // Voice command system  
-  const initializeVoiceRecognition = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.log('Speech recognition not supported');
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-US';
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      console.log('Voice recognition started');
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      console.log('Voice recognition ended');
-      // Restart if voice commands are enabled
-      if (voiceCommands) {
-        setTimeout(() => {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.log('Failed to restart recognition:', e);
-          }
-        }, 1000);
-      }
-    };
-
-    recognition.onresult = (event) => {
-      const result = event.results[event.results.length - 1];
-      if (result.isFinal) {
-        const command = result[0].transcript.toLowerCase().trim();
-        console.log('Voice command received:', command);
-        handleVoiceCommand(command);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
-        setVoiceCommands(false);
-        speakText("Voice commands disabled. Microphone access denied.");
-      }
-    };
-
-    recognitionRef.current = recognition;
-    
-    if (voiceCommands) {
-      try {
-        recognition.start();
-      } catch (e) {
-        console.log('Failed to start recognition:', e);
-      }
-    }
-  }, [language, voiceCommands]);
-
-  const handleVoiceCommand = useCallback((command: string) => {
-    console.log('Processing voice command:', command);
-    
-    // Stop current audio first
-    stopAllAudio();
-    
-    // English commands
-    if (language === 'en') {
-      if (command.includes('take picture') || command.includes('capture') || command.includes('analyze') || command.includes('look')) {
-        speakText("Taking picture and analyzing...");
-        captureImage();
-      } else if (command.includes('replay') || command.includes('repeat') || command.includes('say again')) {
-        if (lastDescription) {
-          speakText("Replaying description...");
-          replayDescription();
-        } else {
-          speakText("No description to replay. Take a picture first.");
-        }
-      } else if (command.includes('stop') || command.includes('quiet') || command.includes('silence')) {
-        speakText("Stopping audio.");
-        stopAllAudio();
-      } else if (command.includes('help') || command.includes('commands')) {
-        speakText("Available commands: Say 'take picture' to analyze your surroundings, 'replay' to hear the last description again, 'more info' for additional context, 'copy' to copy description, 'settings' to open settings, or 'stop' to stop audio.");
-      } else if (command.includes('more info') || command.includes('context') || command.includes('details')) {
-        if (lastDescription) {
-          getContextualInfo();
-        } else {
-          speakText("No description available. Take a picture first.");
-        }
-      } else if (command.includes('copy')) {
-        if (lastDescription) {
-          copyToClipboard();
-          speakText("Description copied to clipboard.");
-        } else {
-          speakText("No description to copy.");
-        }
-      } else if (command.includes('settings') || command.includes('preferences')) {
-        speakText("Opening settings.");
-        onSettingsClick();
-      } else if (command.includes('reading mode') || command.includes('read mode')) {
-        setCurrentMode('reading');
-        speakText("Reading mode activated. Point your camera at text to extract and read it aloud.");
-      } else if (command.includes('navigation mode') || command.includes('navigate')) {
-        setCurrentMode('navigation');
-        speakText("Navigation mode activated. Get directions and navigate spaces.");
-      } else if (command.includes('surroundings mode') || command.includes('describe')) {
-        setCurrentMode('surroundings');
-        speakText("Surroundings mode activated. Analyze and describe your environment.");
-      } else if (command.includes('emergency') || command.includes('help nearby')) {
-        speakText("Finding emergency services and help nearby...");
-        // Trigger emergency help function
-      }
-    }
-    // Hindi commands
-    else if (language === 'hi') {
-      if (command.includes('फोटो') || command.includes('तस्वीर') || command.includes('देखो')) {
-        speakText("तस्वीर ले रहे हैं और विश्लेषण कर रहे हैं...");
-        captureImage();
-      } else if (command.includes('दोबारा') || command.includes('फिर से')) {
-        if (lastDescription) {
-          replayDescription();
-        } else {
-          speakText("दोहराने के लिए कोई विवरण नहीं है। पहले तस्वीर लें।");
-        }
-      } else if (command.includes('बंद') || command.includes('रोको')) {
-        speakText("ऑडियो बंद कर रहे हैं।");
-        stopAllAudio();
-      } else if (command.includes('मदद') || command.includes('कमांड')) {
-        speakText("उपलब्ध कमांड: 'फोटो लो' कहें अपने आसपास का विश्लेषण करने के लिए, 'दोबारा' अंतिम विवरण सुनने के लिए, 'और जानकारी' अतिरिक्त संदर्भ के लिए।");
-      }
-    }
-    // Telugu commands
-    else if (language === 'te') {
-      if (command.includes('ఫోటో') || command.includes('చిత్రం') || command.includes('చూడు')) {
-        speakText("చిత్రం తీసి విశ్లేషిస్తున్నాం...");
-        captureImage();
-      } else if (command.includes('మళ్లీ') || command.includes('మరోసారి')) {
-        if (lastDescription) {
-          replayDescription();
-        } else {
-          speakText("మళ్లీ వినడానికి వివరణ లేదు. మొదట చిత్రం తీయండి.");
-        }
-      } else if (command.includes('ఆపు') || command.includes('మూకుపోవు')) {
-        speakText("ఆడియో ఆపుతున్నాం.");
-        stopAllAudio();
-      }
-    }
-  }, [language, lastDescription, captureImage, replayDescription, getContextualInfo, copyToClipboard, onSettingsClick, speakText, stopAllAudio, setCurrentMode]);
-
-  // Voice interaction system (separate from voice commands)
-  const initializeVoiceInteraction = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.log('Speech recognition not supported for voice interaction');
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-US';
-
-    recognition.onstart = () => {
-      console.log('Voice interaction started');
-    };
-
-    recognition.onresult = (event) => {
-      const result = event.results[0];
-      if (result.isFinal) {
-        const question = result[0].transcript;
-        console.log('Voice question received:', question);
-        setVoiceQuestion(question);
-        processVoiceQuestion(question);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Voice interaction error:', event.error);
-      setIsVoiceInteractionMode(false);
-      if (event.error === 'not-allowed') {
-        speakText("Microphone access denied for voice interaction.");
-      }
-    };
-
-    recognition.onend = () => {
-      setIsVoiceInteractionMode(false);
-    };
-
-    return recognition;
-  }, [language]);
-
-  const processVoiceQuestion = useCallback(async (question: string) => {
-    if (!lastDescription && !currentLocation) {
-      speakText("Please take a picture first or ensure location access to ask questions about your surroundings.");
-      return;
-    }
-
-    setIsProcessingQuestion(true);
-    
-    try {
-      const context = lastDescription || "User is asking about their current location and surroundings.";
-      const locationContext = currentLocation ? `, Location: ${currentLocation.lat}, ${currentLocation.lng}` : "";
-      
-      const { data, error } = await supabase.functions.invoke('contextual-info', {
-        body: {
-          query: `Question: "${question}" Context: ${context}${locationContext}`,
-          language
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to process voice question');
-      }
-
-      if (data && data.contextualInfo) {
-        speakText(data.contextualInfo);
-        toast({
-          title: "Question Answered",
-          description: "Voice response is being read aloud",
-        });
-      } else {
-        throw new Error('No response received');
-      }
-    } catch (error) {
-      console.error('Voice question processing error:', error);
-      speakText("Sorry, I couldn't process your question. Please try again.");
-      toast({
-        title: "Voice Question Failed",
-        description: "Could not process your question. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessingQuestion(false);
-    }
-  }, [lastDescription, currentLocation, language, speakText, toast]);
-
-  // Push-to-talk functionality with image capture
-  const startPushToTalk = useCallback(async () => {
-    if (isPushToTalkActive || isVoiceInteractionMode) return;
-    
-    try {
-      setIsPushToTalkActive(true);
-      
-      // First, capture an image immediately
-      console.log('Starting push-to-talk: capturing image...');
-      await captureImage();
-      
-      // Then start voice recognition
-      const recognition = initializeVoiceInteraction();
-      if (recognition) {
-        setIsVoiceInteractionMode(true);
-        
-        // Brief delay to let image processing start, then start listening
-        setTimeout(() => {
-          try {
-            recognition.start();
-            console.log('Voice recognition started for push-to-talk');
-          } catch (e) {
-            console.error('Failed to start voice recognition:', e);
-            setIsVoiceInteractionMode(false);
-            setIsPushToTalkActive(false);
-          }
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('Error starting push-to-talk:', error);
-      setIsPushToTalkActive(false);
-      setIsVoiceInteractionMode(false);
-    }
-  }, [isPushToTalkActive, isVoiceInteractionMode, captureImage, initializeVoiceInteraction]);
-
-  const stopPushToTalk = useCallback(() => {
-    if (!isPushToTalkActive) return;
-    
-    console.log('Stopping push-to-talk');
-    setIsPushToTalkActive(false);
-    setIsVoiceInteractionMode(false);
-    
-    // Stop any active recognition
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.error('Error stopping recognition:', e);
-      }
-    }
-  }, [isPushToTalkActive]);
-
-  const toggleVoiceCommands = useCallback(() => {
-    setVoiceCommands(!voiceCommands);
-    if (!voiceCommands) {
-      speakText("Voice commands enabled. You can now use voice to control the app.");
-      initializeVoiceRecognition();
-    } else {
-      speakText("Voice commands disabled.");
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
-    }
-  }, [voiceCommands, initializeVoiceRecognition, speakText]);
-
   const isLoading = isCapturing || isProcessing;
 
   // Initialize audio and welcome message
@@ -798,20 +486,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       document.removeEventListener('touchstart', handleFirstClick);
     };
   }, [language, speakText]);
-
-  // Initialize voice recognition
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      initializeVoiceRecognition();
-    }, 3000); // Start after welcome message
-
-    return () => {
-      clearTimeout(timer);
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [initializeVoiceRecognition]);
 
   // Keyboard navigation support
   useEffect(() => {
@@ -870,13 +544,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           setCurrentMode('navigation');
           speakText("Navigation mode selected");
           break;
-        case 'v':
-          event.preventDefault();
-          toggleVoiceCommands();
-          break;
         case 'h':
           event.preventDefault();
-          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, V to toggle voice commands, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
+          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
           break;
         case 'escape':
           event.preventDefault();
@@ -887,7 +557,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, toggleVoiceCommands, speakText, stopAllAudio, setCurrentMode]);
+  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio, setCurrentMode]);
 
   // Get user location
   useEffect(() => {
@@ -997,8 +667,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             currentMode={currentMode}
             onModeChange={setCurrentMode}
             speakText={speakText}
-            voiceCommands={voiceCommands}
-            isListening={isListening}
           />
         </div>
 
@@ -1007,29 +675,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           
           {/* Enhanced Control Buttons */}
           <div className="absolute top-6 right-6 flex gap-3">
-            <Button
-              onClick={toggleVoiceCommands}
-              variant={voiceCommands ? "default" : "outline"}
-              size="icon"
-              className={`
-                glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105
-                ${voiceCommands 
-                  ? 'bg-primary/20 border-primary text-primary shadow-neon' 
-                  : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
-                }
-              `}
-              title={voiceCommands ? "Voice Commands Active" : "Enable Voice Commands"}
-              aria-label={voiceCommands ? "Disable voice commands" : "Enable voice commands"}
-            >
-              {isListening ? (
-                <Mic className="w-5 h-5 animate-pulse" />
-              ) : voiceCommands ? (
-                <Mic className="w-5 h-5" />
-              ) : (
-                <MicOff className="w-5 h-5" />
-              )}
-            </Button>
-            
             <Button
               onClick={onQuickModeToggle}
               variant={isQuickMode ? "default" : "outline"}
@@ -1059,38 +704,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             </Button>
           </div>
 
-          {/* Enhanced Capture Button with Voice Interaction */}
+          {/* Enhanced Capture Button */}
           <div className="flex flex-col items-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
             <div className="relative">
-              {/* Push-to-Talk Button (slide from left) */}
-              <Button
-                onMouseDown={startPushToTalk}
-                onMouseUp={stopPushToTalk}
-                onMouseLeave={stopPushToTalk}
-                onTouchStart={startPushToTalk}
-                onTouchEnd={stopPushToTalk}
-                disabled={isProcessingQuestion || isLoading}
-                className={`
-                  absolute -left-20 top-1/2 transform -translate-y-1/2 w-16 h-16 rounded-full
-                  glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105 select-none
-                  ${isPushToTalkActive || isVoiceInteractionMode
-                    ? 'bg-accent/20 border-accent text-accent shadow-neon animate-pulse' 
-                    : 'border-border/50 hover:border-accent/50 hover:bg-accent/5'
-                  }
-                  ${isProcessingQuestion ? 'bg-primary/20 border-primary text-primary' : ''}
-                `}
-                title="Push to Talk - Hold to capture image and ask questions"
-                aria-label="Hold to capture image and ask questions about surroundings"
-              >
-                {isProcessingQuestion ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : isPushToTalkActive || isVoiceInteractionMode ? (
-                  <Mic className="w-6 h-6 animate-pulse" />
-                ) : (
-                  <MessageCircle className="w-6 h-6" />
-                )}
-              </Button>
-
               {/* Main Capture Button */}
               <Button
                 onClick={captureImage}
@@ -1104,7 +720,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                 `}
                 title={currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings"}
                 aria-label={`${isLoading ? 'Processing...' : 'Take picture and analyze'}`}
-               >
+              >
                 {/* Background shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 
@@ -1185,15 +801,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                 : "Describe your surroundings with AI vision."
             }
           </p>
-          {/* Push-to-Talk Instructions */}
-          <div className="mt-3 p-3 glass rounded-lg border border-accent/20">
-            <p className="text-xs text-accent font-medium mb-1">
-              Push-to-Talk Voice Questions
-            </p>
-            <p className="text-xs">
-              Hold the chat button to capture image and ask questions about your surroundings
-            </p>
-          </div>
         </div>
 
         </div>
@@ -1247,25 +854,19 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             )}
             
             {lastAnalysis && (
-              <div className="mt-3 text-xs text-muted-foreground flex items-center gap-4">
-                <span>
-                  {new Date(lastAnalysis.timestamp).toLocaleTimeString()}
-                </span>
-                <span className="capitalize">
-                  {lastAnalysis.detailLevel} detail
-                </span>
-                <span className="capitalize">
-                  {lastAnalysis.source} powered
-                </span>
+              <div className="text-xs text-muted-foreground/60 mt-2">
+                {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
+                {lastAnalysis.language.toUpperCase()} • 
+                {lastAnalysis.source?.toUpperCase()}
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Hidden elements for camera functionality */}
-      <video ref={videoRef} className="hidden" autoPlay muted playsInline />
-      <canvas ref={canvasRef} className="hidden" />
+      {/* Hidden video and canvas elements for camera */}
+      <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>
   );
 };

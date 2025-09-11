@@ -9,8 +9,6 @@ interface ModeSelectorProps {
   currentMode: AppMode;
   onModeChange: (mode: AppMode) => void;
   speakText: (text: string) => void;
-  voiceCommands: boolean;
-  isListening: boolean;
 }
 
 const MODES = [
@@ -43,9 +41,7 @@ const MODES = [
 export const ModeSelector = ({ 
   currentMode, 
   onModeChange, 
-  speakText, 
-  voiceCommands, 
-  isListening 
+  speakText
 }: ModeSelectorProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -91,28 +87,6 @@ export const ModeSelector = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* Enhanced Voice Commands Status */}
-      {voiceCommands && (
-        <div className="mb-6 text-center animate-fade-in">
-          <div className={`
-            inline-flex items-center gap-3 px-4 py-3 rounded-full text-sm font-medium
-            glass border-2 backdrop-blur-md transition-all duration-300
-            ${isListening 
-              ? 'border-accent/50 bg-accent/10 text-accent shadow-neon' 
-              : 'border-border/30 bg-muted/5 text-muted-foreground'
-            }
-          `}>
-            <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
-            <span>
-              Voice commands {isListening ? 'listening...' : 'ready'}
-            </span>
-            {isListening && (
-              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Mode Selection Grid */}
       {isExpanded && (
@@ -160,18 +134,6 @@ export const ModeSelector = ({
               </div>
             </Button>
           ))}
-        </div>
-      )}
-
-      {/* Voice Status Indicator (minimal) */}
-      {voiceCommands && isListening && (
-        <div className="mt-4 flex items-center justify-center">
-          <div className="glass border border-primary/20 backdrop-blur-sm rounded-full px-3 py-1">
-            <div className="flex items-center gap-2 text-xs text-primary">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              <span>Listening</span>
-            </div>
-          </div>
         </div>
       )}
     </div>
