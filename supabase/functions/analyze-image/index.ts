@@ -83,8 +83,12 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
+          {
+            role: 'system',
+            content: 'You are an AI assistant that helps visually impaired users navigate their environment. Focus on describing objects, text, obstacles, and spatial relationships. For people, describe their general presence, position, and actions without identifying who they are (e.g., "a person sitting at a table" rather than trying to identify them).'
+          },
           {
             role: 'user',
             content: [
@@ -102,8 +106,7 @@ serve(async (req) => {
             ]
           }
         ],
-        max_tokens: detailLevel === 'high' ? 1000 : detailLevel === 'medium' ? 500 : 200,
-        temperature: 0.3
+        max_tokens: detailLevel === 'high' ? 1000 : detailLevel === 'medium' ? 500 : 200
       }),
     });
 
