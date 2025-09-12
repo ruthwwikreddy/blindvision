@@ -45,9 +45,10 @@ serve(async (req) => {
     // Generate prompt based on detail level and language
     const generatePrompt = (detailLevel: string, language: string): string => {
       const basePrompts = {
-        low: 'Describe what you see in a single sentence. Start directly with what is present, not with "The image shows" or similar phrases.',
-        medium: 'Describe what you see in detail, including the main objects, people, setting, and any important visual elements. Start directly with describing what is present, avoid phrases like "The image shows" or "This image contains".',
-        high: 'Provide a comprehensive and detailed description of what you see, including all visible elements, their relationships, colors, lighting, mood, and any text or numbers visible. Be thorough and descriptive. Start directly with describing what is present, avoid phrases like "The image shows", "This image contains", or similar introductory phrases.'
+        low: "Briefly identify the most important thing in front of the camera. If it's an object, name it (e.g., 'Keloid ointment tube'). If it's an environment, identify the main element (e.g., 'Staircase with three steps ahead'). Include quick identification or a short translation of any visible sign/label. Keep it under 1–2 sentences.",
+        medium: "Give a clear 2–3 sentence description. For objects: name, purpose, and key label text. For environments: describe people, obstacles, or signage (e.g., 'Restroom on your right'). Add basic context to help with awareness (e.g., 'This is a park with a pathway to your left').",
+        high: "Provide a detailed 3–5 sentence explanation. For objects: include name, appearance, usage, warnings, and instructions (e.g., 'This is a tube of Keloid ointment used for scar treatment. Apply twice daily.'). For environments: include people, obstacles, distances, directions (left, right, forward), and deeper learning context (e.g., 'This park has benches along the pathway and a children's play area to the right.'). Translate any visible text/signs if present.",
+        safety: "Warn only about hazards and obstacles. Use clear, urgent phrasing and directions. Examples: 'Caution: Step down 2 meters ahead.' 'Caution: Bicycle approaching from the left.' Focus only on immediate risks to user safety."
       };
       
       let prompt = basePrompts[detailLevel as keyof typeof basePrompts] || basePrompts.medium;
