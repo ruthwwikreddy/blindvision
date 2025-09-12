@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, BookOpen, Navigation } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, BookOpen, Navigation, Mic, MicOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
@@ -10,6 +10,7 @@ import { App } from '@capacitor/app';
 import { ModeSelector, type AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import '../types/speech.d.ts';
 
 interface MainInterfaceProps {
@@ -31,6 +32,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [currentMode, setCurrentMode] = useState<AppMode>('surroundings');
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [capturedImageForVoice, setCapturedImageForVoice] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -38,6 +41,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   // Audio management refs
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  
+  // Voice recording hook
+  const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceRecorder();
 
   // Function to stop all audio playback
   const stopAllAudio = useCallback(() => {
@@ -237,7 +243,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [language, toast, stopAllAudio]);
 
-  const analyzeImage = useCallback(async (imageDataUrl: string) => {
+  const analyzeImage = useCallback(async (imageDataUrl: string, question?: string) => {
     try {
       setIsProcessing(true);
       
@@ -247,7 +253,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           imageDataUrl,
           language,
           detailLevel: currentMode === 'reading' ? 'text-extraction' : currentMode === 'navigation' ? 'navigation-focused' : detailLevel,
-          isQuickMode: currentMode === 'reading' ? false : isQuickMode
+          isQuickMode: currentMode === 'reading' ? false : isQuickMode,
+          question
         }
       });
       
@@ -287,20 +294,24 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       setAnalysisHistory(prev => [newEntry, ...prev.slice(0, 9)]); // Keep last 10
 
       // Mode-specific speech feedback
-      const modePrefix = currentMode === 'reading' 
-        ? "Text found: " 
-        : currentMode === 'navigation' 
-          ? "Navigation guidance: " 
-          : "";
+      const modePrefix = question 
+        ? "Answer: "
+        : currentMode === 'reading' 
+          ? "Text found: " 
+          : currentMode === 'navigation' 
+            ? "Navigation guidance: " 
+            : "";
 
       // Speak the description
       speakText(modePrefix + description);
       
       toast({
-        title: currentMode === 'reading' ? "Text Analysis Complete" 
+        title: question ? "Voice Question Answered"
+              : currentMode === 'reading' ? "Text Analysis Complete" 
               : currentMode === 'navigation' ? "Navigation Analysis Complete"
               : isQuickMode ? "Quick Analysis Complete" : "Scene Analysis Complete",
-        description: currentMode === 'reading' ? "Text extracted and being read aloud"
+        description: question ? "Your question has been answered and is being read aloud"
+                   : currentMode === 'reading' ? "Text extracted and being read aloud"
                    : currentMode === 'navigation' ? "Navigation guidance is being read aloud"
                    : isQuickMode ? "Objects identified and being read aloud" : "Description is ready and being read aloud",
       });
@@ -369,6 +380,110 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       setIsCapturing(false);
     }
   }, [analyzeImage, toast]);
+
+  // Voice assistant function - capture image then record voice
+  const startVoiceAssistant = useCallback(async () => {
+    try {
+      setIsVoiceMode(true);
+      
+      // First capture the image
+      setIsCapturing(true);
+      
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      if (!video || !canvas) return;
+      
+      video.srcObject = stream;
+      await video.play();
+      
+      // Brief delay to let camera stabilize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Capture frame
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
+      // Stop camera
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Convert to base64 and store
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setCapturedImageForVoice(imageDataUrl);
+      
+      setIsCapturing(false);
+      
+      // Now start voice recording
+      speakText("Image captured. Please ask your question now.");
+      
+      // Small delay to let the speech finish
+      setTimeout(async () => {
+        await startRecording();
+        toast({
+          title: "Voice Assistant Active",
+          description: "Speak your question about the image. Tap again to stop recording.",
+        });
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Voice assistant error:', error);
+      setIsVoiceMode(false);
+      setIsCapturing(false);
+      toast({
+        title: "Voice Assistant Error",
+        description: "Could not start voice assistant. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [startRecording, speakText, toast]);
+
+  // Stop voice recording and process
+  const stopVoiceAssistant = useCallback(async () => {
+    try {
+      if (!capturedImageForVoice) {
+        throw new Error('No image captured for voice assistant');
+      }
+
+      // Stop recording and get transcription
+      const transcribedText = await stopRecording();
+      
+      if (!transcribedText.trim()) {
+        throw new Error('No speech detected');
+      }
+      
+      toast({
+        title: "Processing Question",
+        description: `Question: "${transcribedText}"`,
+      });
+
+      // Analyze image with the question
+      await analyzeImage(capturedImageForVoice, transcribedText);
+      
+    } catch (error) {
+      console.error('Voice assistant processing error:', error);
+      toast({
+        title: "Voice Processing Failed",
+        description: error.message || "Could not process your voice question.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoiceMode(false);
+      setCapturedImageForVoice(null);
+    }
+  }, [capturedImageForVoice, stopRecording, analyzeImage, toast]);
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
@@ -442,7 +557,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [lastDescription, language, speakText, toast]);
 
-  const isLoading = isCapturing || isProcessing;
+  const isLoading = isCapturing || isProcessing || isTranscribing;
 
   // Initialize audio and welcome message
   useEffect(() => {
@@ -500,7 +615,14 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         case 'enter':
           event.preventDefault();
           if (!isLoading) {
-            captureImage();
+            if (isVoiceMode && isRecording) {
+              stopVoiceAssistant();
+            } else if (isVoiceMode) {
+              setIsVoiceMode(false);
+              setCapturedImageForVoice(null);
+            } else {
+              captureImage();
+            }
           }
           break;
         case 'r':
@@ -544,9 +666,15 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           setCurrentMode('navigation');
           speakText("Navigation mode selected");
           break;
+        case 'v':
+          event.preventDefault();
+          if (!isLoading && !isVoiceMode) {
+            startVoiceAssistant();
+          }
+          break;
         case 'h':
           event.preventDefault();
-          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
+          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
           break;
         case 'escape':
           event.preventDefault();
@@ -557,7 +685,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio, setCurrentMode]);
+  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio, setCurrentMode, isVoiceMode, isRecording, startVoiceAssistant, stopVoiceAssistant]);
 
   // Get user location
   useEffect(() => {
@@ -709,17 +837,18 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             <div className="relative">
               {/* Main Capture Button */}
               <Button
-                onClick={captureImage}
-                disabled={isLoading}
+                onClick={isVoiceMode && isRecording ? stopVoiceAssistant : isVoiceMode ? () => { setIsVoiceMode(false); setCapturedImageForVoice(null); } : captureImage}
+                disabled={isLoading && !isRecording}
                 className={`
                   relative w-36 h-36 md:w-40 md:h-40 rounded-full 
-                  glass border-4 border-primary/30 backdrop-blur-md transition-all duration-300 hover:scale-105 
-                  bg-gradient-to-br from-primary/20 via-primary/10 to-transparent
+                  glass border-4 ${isVoiceMode ? 'border-accent/50' : 'border-primary/30'} backdrop-blur-md transition-all duration-300 hover:scale-105 
+                  bg-gradient-to-br ${isVoiceMode ? 'from-accent/20 via-accent/10' : 'from-primary/20 via-primary/10'} to-transparent
                   shadow-elevated hover:shadow-2xl group overflow-hidden
                   ${isLoading ? 'animate-pulse' : 'hover:shadow-primary/25 active:scale-95'}
+                  ${isRecording ? 'animate-pulse border-red-500/50' : ''}
                 `}
-                title={currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings"}
-                aria-label={`${isLoading ? 'Processing...' : 'Take picture and analyze'}`}
+                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings"}
+                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Take picture and analyze'}`}
               >
                 {/* Background shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -727,7 +856,11 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                 {/* Icon */}
                 <div className="relative z-10">
                   {isLoading ? (
-                    <Loader2 className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground animate-spin" />
+                    <Loader2 className={`w-16 h-16 md:w-20 md:h-20 ${isVoiceMode ? 'text-accent-foreground' : 'text-primary-foreground'} animate-spin`} />
+                  ) : isVoiceMode && isRecording ? (
+                    <MicOff className="w-16 h-16 md:w-20 md:h-20 text-red-500 transition-transform group-hover:scale-110 animate-pulse" />
+                  ) : isVoiceMode ? (
+                    <Mic className="w-16 h-16 md:w-20 md:h-20 text-accent-foreground transition-transform group-hover:scale-110" />
                   ) : currentMode === 'reading' ? (
                     <BookOpen className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
                   ) : currentMode === 'navigation' ? (
@@ -740,15 +873,32 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             </div>
             
             {/* Mode indicator */}
-            <div className="mt-4 px-4 py-2 glass rounded-full border border-primary/20">
-              <p className="text-sm font-medium text-primary capitalize">
-                {currentMode} Mode
+            <div className={`mt-4 px-4 py-2 glass rounded-full border ${isVoiceMode ? 'border-accent/20' : 'border-primary/20'}`}>
+              <p className={`text-sm font-medium capitalize ${isVoiceMode ? 'text-accent' : 'text-primary'}`}>
+                {isVoiceMode ? (isRecording ? 'Recording...' : isTranscribing ? 'Processing...' : 'Voice Ready') : `${currentMode} Mode`}
               </p>
             </div>
           </div>
 
+        {/* Voice Assistant Button */}
+        {!isVoiceMode && (
+          <div className="flex justify-center">
+            <Button
+              onClick={startVoiceAssistant}
+              disabled={isLoading}
+              variant="outline"
+              size="lg"
+              className="border-accent/30 bg-accent/10 hover:bg-accent/20 text-accent hover:text-accent flex items-center gap-2"
+              aria-label="Start voice assistant - capture image and ask questions"
+            >
+              <Mic className="w-5 h-5" />
+              Voice Assistant
+            </Button>
+          </div>
+        )}
+
         {/* Action Buttons */}
-        {lastDescription && (
+        {lastDescription && !isVoiceMode && (
           <div className="flex flex-wrap gap-3 justify-center max-w-sm">
             <Button
               onClick={replayDescription}
@@ -794,11 +944,17 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         {/* Current Mode Description */}
         <div className="text-center text-sm text-muted-foreground max-w-sm">
           <p>
-            {currentMode === 'reading' 
-              ? "Point your camera at text to read it aloud."
-              : currentMode === 'navigation'
-                ? "Get guidance for safe movement and navigation."
-                : "Describe your surroundings with AI vision."
+            {isVoiceMode 
+              ? (isRecording 
+                  ? "Speak your question about the captured image. Tap the button when finished."
+                  : isTranscribing
+                    ? "Processing your voice question..."
+                    : "Image captured. Starting voice recording...")
+              : currentMode === 'reading' 
+                ? "Point your camera at text to read it aloud."
+                : currentMode === 'navigation'
+                  ? "Get guidance for safe movement and navigation."
+                  : "Describe your surroundings with AI vision."
             }
           </p>
         </div>

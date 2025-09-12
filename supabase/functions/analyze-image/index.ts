@@ -28,7 +28,7 @@ serve(async (req) => {
       );
     }
 
-    const { imageDataUrl, language, detailLevel, isQuickMode = false } = await req.json();
+    const { imageDataUrl, language, detailLevel, isQuickMode = false, question } = await req.json();
     
     if (!imageDataUrl) {
       return new Response(
@@ -42,8 +42,8 @@ serve(async (req) => {
 
     console.log(`Processing image analysis with language: ${language}, detail: ${detailLevel}`);
 
-    // Generate prompt based on detail level and language
-    const generatePrompt = (detailLevel: string, language: string): string => {
+    // Generate prompt based on detail level, language, and question
+    const generatePrompt = (detailLevel: string, language: string, question?: string): string => {
       const basePrompts = {
         low: "Briefly identify the most important thing in front of the camera. If it's an object, name it (e.g., 'Keloid ointment tube'). If it's an environment, identify the main element (e.g., 'Staircase with three steps ahead'). Include quick identification or a short translation of any visible sign/label. Keep it under 1–2 sentences.",
         medium: "Give a clear 2–3 sentence description. For objects: name, purpose, and key label text. For environments: describe people, obstacles, or signage (e.g., 'Restroom on your right'). Add basic context to help with awareness (e.g., 'This is a park with a pathway to your left').",
@@ -52,6 +52,11 @@ serve(async (req) => {
       };
       
       let prompt = basePrompts[detailLevel as keyof typeof basePrompts] || basePrompts.medium;
+      
+      // Add question context if provided
+      if (question) {
+        prompt = `Answer this question about the image: "${question}"\n\nAlso provide this context: ${prompt}`;
+      }
       
       if (language !== 'en') {
         const languageNames = {
@@ -74,7 +79,7 @@ serve(async (req) => {
       return prompt;
     };
 
-    const prompt = generatePrompt(detailLevel, language);
+    const prompt = generatePrompt(detailLevel, language, question);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
