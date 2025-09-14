@@ -38,6 +38,11 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   
+  // Swipe detection refs
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeThreshold = 50; // minimum distance for swipe
+  const timeThreshold = 500; // maximum time for swipe (ms)
+  
   // Audio management refs
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -485,6 +490,74 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [capturedImageForVoice, stopRecording, analyzeImage, toast]);
 
+  // Mode cycling function for swipe
+  const cycleMode = useCallback(() => {
+    const modes: AppMode[] = ['surroundings', 'reading', 'navigation'];
+    const currentIndex = modes.indexOf(currentMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    const nextMode = modes[nextIndex];
+    
+    setCurrentMode(nextMode);
+    
+    // Speak mode change feedback
+    const modeNames = {
+      'surroundings': 'Surroundings mode',
+      'reading': 'Reading mode', 
+      'navigation': 'Navigation mode'
+    };
+    
+    speakText(`Switched to ${modeNames[nextMode]}`);
+    
+    toast({
+      title: "Mode Changed",
+      description: `Now in ${modeNames[nextMode]}`,
+    });
+  }, [currentMode, speakText, toast]);
+
+  // Touch event handlers for swipe detection
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isVoiceMode || isCapturing || isProcessing || isTranscribing) return;
+    
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+  }, [isVoiceMode, isCapturing, isProcessing, isTranscribing]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isVoiceMode || isCapturing || isProcessing || isTranscribing || !touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const touchEnd = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+    
+    const touchStart = touchStartRef.current;
+    const deltaX = touchEnd.x - touchStart.x;
+    const deltaY = touchEnd.y - touchStart.y;
+    const deltaTime = touchEnd.time - touchStart.time;
+    
+    // Check if it's a valid swipe (horizontal, fast enough, long enough)
+    if (
+      Math.abs(deltaX) > swipeThreshold && 
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && // more horizontal than vertical
+      deltaTime < timeThreshold
+    ) {
+      // Prevent the click event from firing
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Cycle to next mode
+      cycleMode();
+    }
+    
+    touchStartRef.current = null;
+  }, [isVoiceMode, isCapturing, isProcessing, isTranscribing, cycleMode, swipeThreshold, timeThreshold]);
+
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
     
@@ -838,6 +911,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
               {/* Main Capture Button */}
               <Button
                 onClick={isVoiceMode && isRecording ? stopVoiceAssistant : isVoiceMode ? () => { setIsVoiceMode(false); setCapturedImageForVoice(null); } : captureImage}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
                 disabled={isLoading && !isRecording}
                 className={`
                   relative w-36 h-36 md:w-40 md:h-40 rounded-full 
@@ -847,8 +922,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                   ${isLoading ? 'animate-pulse' : 'hover:shadow-primary/25 active:scale-95'}
                   ${isRecording ? 'animate-pulse border-red-500/50' : ''}
                 `}
-                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings"}
-                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Take picture and analyze'}`}
+                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings. Swipe to change modes."}
+                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Take picture and analyze. Swipe horizontally to cycle modes.'}`}
               >
                 {/* Background shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
