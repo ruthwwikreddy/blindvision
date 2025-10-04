@@ -75,13 +75,34 @@ serve(async (req) => {
     // Process audio in chunks
     const binaryAudio = processBase64Chunks(audio);
     
-    // Prepare form data
+    // Prepare form data with language support for Indian languages
     const formData = new FormData();
     const blob = new Blob([binaryAudio], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
-    if (language !== 'en') {
-      formData.append('language', language);
+    
+    // Map language codes to OpenAI Whisper supported codes
+    // OpenAI Whisper supports all major Indian languages
+    const languageMap: { [key: string]: string } = {
+      'hi': 'hi',  // Hindi
+      'bn': 'bn',  // Bengali
+      'te': 'te',  // Telugu
+      'mr': 'mr',  // Marathi
+      'ta': 'ta',  // Tamil
+      'gu': 'gu',  // Gujarati
+      'kn': 'kn',  // Kannada
+      'ml': 'ml',  // Malayalam
+      'pa': 'pa',  // Punjabi
+      'or': 'or',  // Odia
+      'as': 'as',  // Assamese
+      'ur': 'ur',  // Urdu
+      'ne': 'ne',  // Nepali
+      'sa': 'sa',  // Sanskrit
+    };
+    
+    const whisperLanguage = languageMap[language] || language;
+    if (whisperLanguage !== 'en') {
+      formData.append('language', whisperLanguage);
     }
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {

@@ -47,8 +47,24 @@ serve(async (req) => {
     if (voice === 'alloy') {
       const voiceMap: { [key: string]: string } = {
         'en': 'alloy',
-        'hi': 'nova',
-        'te': 'shimmer',
+        // Indian Languages
+        'hi': 'nova',      // Hindi
+        'bn': 'nova',      // Bengali
+        'te': 'shimmer',   // Telugu
+        'mr': 'nova',      // Marathi
+        'ta': 'shimmer',   // Tamil
+        'gu': 'nova',      // Gujarati
+        'kn': 'shimmer',   // Kannada
+        'ml': 'nova',      // Malayalam
+        'pa': 'alloy',     // Punjabi
+        'or': 'nova',      // Odia
+        'as': 'shimmer',   // Assamese
+        'ur': 'nova',      // Urdu
+        'ks': 'alloy',     // Kashmiri
+        'sd': 'nova',      // Sindhi
+        'sa': 'shimmer',   // Sanskrit
+        'ne': 'nova',      // Nepali
+        // Other major languages
         'es': 'nova',
         'fr': 'shimmer', 
         'de': 'echo',

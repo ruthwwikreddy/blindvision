@@ -1,12 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Zap, Info, Brain, BookOpen, Navigation, Mic, MicOff } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Info, Brain, BookOpen, Navigation, Mic, MicOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { overlayService } from '@/services/overlayService';
-import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 import { ModeSelector, type AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
@@ -784,70 +781,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     getCurrentLocation();
   }, []);
 
-  // Initialize overlay service and handle background functionality
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      // Initialize the floating overlay for native apps
-      const initializeOverlay = async () => {
-        try {
-          await overlayService.showFloatingButton();
-          
-          // Announce overlay is active
-          setTimeout(() => {
-            speakText("Floating button is now active across all apps. You can drag it anywhere on your screen.", true);
-          }, 3000);
-        } catch (error) {
-          console.error('Failed to initialize overlay:', error);
-          toast({
-            title: "Overlay Setup Failed",
-            description: "Could not create floating button. App will work normally.",
-            variant: "destructive"
-          });
-        }
-      };
-
-      initializeOverlay();
-
-      // Listen for capture requests from the floating button
-      const handleCaptureRequest = () => {
-        captureImage();
-      };
-
-      window.addEventListener('blindvision-capture-request', handleCaptureRequest);
-
-      // Handle app state changes - maintain overlay even when app goes to background
-      const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
-        console.log('App state changed:', isActive);
-        // Always ensure overlay is active, regardless of app state
-        setTimeout(() => {
-          overlayService.showFloatingButton();
-        }, 500);
-      };
-
-      App.addListener('appStateChange', handleAppStateChange);
-
-      // Handle device pause/resume
-      const handlePause = () => {
-        console.log('App paused - maintaining overlay');
-        // Overlay should persist even when app is paused
-      };
-
-      const handleResume = () => {
-        console.log('App resumed - ensuring overlay');
-        overlayService.showFloatingButton();
-      };
-
-      App.addListener('pause', handlePause);
-      App.addListener('resume', handleResume);
-
-      // Cleanup
-      return () => {
-        window.removeEventListener('blindvision-capture-request', handleCaptureRequest);
-        App.removeAllListeners();
-        // Don't hide overlay on cleanup - let it persist
-      };
-    }
-  }, [captureImage, speakText, toast]);
+  // Removed overlay service - using in-app controls only
 
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden safe-area-top safe-area-bottom">
@@ -875,24 +809,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         <div className="flex flex-col items-center space-y-6">
           
           {/* Enhanced Control Buttons */}
-          <div className="absolute top-6 right-6 flex gap-3">
-            <Button
-              onClick={onQuickModeToggle}
-              variant={isQuickMode ? "default" : "outline"}
-              size="icon"
-              className={`
-                glass border-2 backdrop-blur-md transition-all duration-300 hover:scale-105
-                ${isQuickMode 
-                  ? 'bg-accent/20 border-accent text-accent shadow-neon' 
-                  : 'border-border/50 hover:border-accent/50 hover:bg-accent/5'
-                }
-              `}
-              title={isQuickMode ? "Quick Mode Active" : "Enable Quick Mode"}
-              aria-label={isQuickMode ? "Disable quick mode" : "Enable quick mode"}
-            >
-              <Zap className="w-5 h-5" />
-            </Button>
-            
+          <div className="absolute top-6 right-6">
             <Button
               onClick={onSettingsClick}
               variant="outline"
