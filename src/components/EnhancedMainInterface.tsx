@@ -1,13 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Info, Brain, BookOpen, Navigation, Mic, MicOff } from 'lucide-react';
+import { Eye, Camera, Loader2, Volume2, Settings, Copy, Info, Brain, BookOpen, Navigation, Mic, MicOff, Palette, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ModeSelector, type AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { useEnhancedGestures } from '@/hooks/useEnhancedGestures';
+import { useThemeMode } from '@/hooks/useThemeMode';
+import { TutorialOverlay } from './TutorialOverlay';
+import { EmergencySOS } from './EmergencySOS';
 import '../types/speech.d.ts';
 
 interface MainInterfaceProps {
@@ -31,21 +36,25 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [capturedImageForVoice, setCapturedImageForVoice] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showEmergencySOS, setShowEmergencySOS] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   
-  // Swipe detection refs
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const swipeThreshold = 50; // minimum distance for swipe
-  const timeThreshold = 500; // maximum time for swipe (ms)
+  // New hooks
+  const { triggerHaptic } = useHapticFeedback();
+  const { themeMode, cycleTheme, themeName } = useThemeMode();
+  const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceRecorder();
+  
+  // Emergency tap detection
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Audio management refs
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  
-  // Voice recording hook
-  const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceRecorder();
 
   // Function to stop all audio playback
   const stopAllAudio = useCallback(() => {
@@ -246,8 +255,11 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   }, [language, toast, stopAllAudio]);
 
   const analyzeImage = useCallback(async (imageDataUrl: string, question?: string) => {
+    const MAX_RETRIES = 2;
+    
     try {
       setIsProcessing(true);
+      triggerHaptic('capture');
       
       // Use OpenAI for analysis with mode-specific prompts
       const { data, error } = await supabase.functions.invoke('analyze-image', {
@@ -306,6 +318,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
       // Speak the description
       speakText(modePrefix + description);
+      triggerHaptic('success');
+      setRetryCount(0); // Reset retry count on success
       
       toast({
         title: question ? "Voice Question Answered"
@@ -320,15 +334,36 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
     } catch (error) {
       console.error('Analysis error:', error);
-      toast({
-        title: "Analysis Failed",
-        description: error.message || "Could not analyze the image. Please try again.",
-        variant: "destructive"
-      });
+      triggerHaptic('error');
+      
+      // Retry logic with exponential backoff
+      if (retryCount < MAX_RETRIES) {
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        setRetryCount(prev => prev + 1);
+        
+        toast({
+          title: `Retrying (${retryCount + 1}/${MAX_RETRIES})`,
+          description: `Analysis failed. Retrying in ${delay / 1000} seconds...`,
+        });
+        
+        setTimeout(() => {
+          analyzeImage(imageDataUrl, question);
+        }, delay);
+      } else {
+        setRetryCount(0);
+        toast({
+          title: "Analysis Failed",
+          description: error.message || "Could not analyze the image after multiple attempts. Please try again.",
+          variant: "destructive"
+        });
+        speakText("Analysis failed after multiple attempts. Please try again.");
+      }
     } finally {
-      setIsProcessing(false);
+      if (retryCount >= MAX_RETRIES || retryCount === 0) {
+        setIsProcessing(false);
+      }
     }
-  }, [detailLevel, language, isQuickMode, speakText, toast, currentMode]);
+  }, [detailLevel, language, isQuickMode, speakText, toast, currentMode, triggerHaptic, retryCount]);
 
   const captureImage = useCallback(async () => {
     try {
@@ -495,6 +530,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     const nextMode = modes[nextIndex];
     
     setCurrentMode(nextMode);
+    triggerHaptic('modeChange');
     
     // Speak mode change feedback
     const modeNames = {
@@ -509,69 +545,94 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       title: "Mode Changed",
       description: `Now in ${modeNames[nextMode]}`,
     });
-  }, [currentMode, speakText, toast]);
+  }, [currentMode, speakText, toast, triggerHaptic]);
 
-  // Touch event handlers for swipe detection
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (isVoiceMode || isCapturing || isProcessing || isTranscribing) return;
-    
-    const touch = e.touches[0];
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now()
-    };
-  }, [isVoiceMode, isCapturing, isProcessing, isTranscribing]);
+  // Enhanced gesture system for main button
+  const mainButtonGestures = useEnhancedGestures({
+    onTap: () => {
+      if (!isLoading) {
+        if (isVoiceMode && isRecording) {
+          stopVoiceAssistant();
+        } else if (isVoiceMode) {
+          setIsVoiceMode(false);
+          setCapturedImageForVoice(null);
+        } else {
+          captureImage();
+        }
+      }
+    },
+    onLongPress: () => {
+      if (!isLoading && !isVoiceMode) {
+        triggerHaptic('longPress');
+        startVoiceAssistant();
+      }
+    },
+    onSwipeLeft: () => {
+      if (!isLoading && !isVoiceMode) {
+        triggerHaptic('swipe');
+        cycleMode();
+      }
+    },
+    onSwipeRight: () => {
+      if (!isLoading && !isVoiceMode) {
+        triggerHaptic('swipe');
+        cycleMode();
+      }
+    }
+  });
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isVoiceMode || isCapturing || isProcessing || isTranscribing || !touchStartRef.current) return;
+  // Global gesture system
+  const globalGestures = useEnhancedGestures({
+    onTwoFingerTap: () => {
+      triggerHaptic('selection');
+      onSettingsClick();
+    },
+    onSwipeDown: () => {
+      // Scroll to history if exists
+      const historyElement = document.querySelector('[data-history]');
+      historyElement?.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
+  // Emergency tap detection (triple tap)
+  const handleEmergencyTap = useCallback(() => {
+    tapCountRef.current += 1;
     
-    const touch = e.changedTouches[0];
-    const touchEnd = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now()
-    };
-    
-    const touchStart = touchStartRef.current;
-    const deltaX = touchEnd.x - touchStart.x;
-    const deltaY = touchEnd.y - touchStart.y;
-    const deltaTime = touchEnd.time - touchStart.time;
-    
-    // Check if it's a valid swipe (horizontal, fast enough, long enough)
-    if (
-      Math.abs(deltaX) > swipeThreshold && 
-      Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && // more horizontal than vertical
-      deltaTime < timeThreshold
-    ) {
-      // Prevent the click event from firing
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Cycle to next mode
-      cycleMode();
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
     }
     
-    touchStartRef.current = null;
-  }, [isVoiceMode, isCapturing, isProcessing, isTranscribing, cycleMode, swipeThreshold, timeThreshold]);
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+    }, 500);
+    
+    if (tapCountRef.current === 3) {
+      tapCountRef.current = 0;
+      triggerHaptic('warning');
+      setShowEmergencySOS(true);
+      speakText('Emergency S O S activated');
+    }
+  }, [triggerHaptic, speakText]);
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
     
     try {
       await navigator.clipboard.writeText(lastDescription);
+      triggerHaptic('success');
       toast({
         title: "Copied!",
         description: "Description copied to clipboard",
       });
     } catch (error) {
+      triggerHaptic('error');
       toast({
         title: "Copy Failed",
         description: "Could not copy to clipboard",
         variant: "destructive"
       });
     }
-  }, [lastDescription, toast]);
+  }, [lastDescription, toast, triggerHaptic]);
 
   const replayDescription = useCallback(() => {
     if (!lastDescription) return;
@@ -629,8 +690,15 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
   const isLoading = isCapturing || isProcessing || isTranscribing;
 
-  // Initialize audio and welcome message
+  // Initialize audio, check tutorial, and welcome message
   useEffect(() => {
+    // Check if tutorial has been completed
+    const tutorialCompleted = localStorage.getItem('tutorial-completed');
+    if (!tutorialCompleted) {
+      setShowTutorial(true);
+      return;
+    }
+
     // Initialize speech synthesis and give welcome message
     const initializeAudio = () => {
       console.log('Initializing audio system');
@@ -744,7 +812,13 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           break;
         case 'h':
           event.preventDefault();
-          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
+          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, T for theme, H for help.");
+          break;
+        case 't':
+          event.preventDefault();
+          const newTheme = cycleTheme();
+          triggerHaptic('selection');
+          speakText(`Theme changed to ${newTheme}`);
           break;
         case 'escape':
           event.preventDefault();
@@ -784,7 +858,30 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   // Removed overlay service - using in-app controls only
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative overflow-hidden safe-area-top safe-area-bottom">
+    <div 
+      className="min-h-screen bg-background text-foreground relative overflow-hidden safe-area-top safe-area-bottom"
+      onClick={handleEmergencyTap}
+      {...globalGestures}
+    >
+      {/* Tutorial Overlay */}
+      {showTutorial && (
+        <TutorialOverlay 
+          onComplete={() => setShowTutorial(false)}
+          speakText={speakText}
+        />
+      )}
+
+      {/* Emergency SOS */}
+      {showEmergencySOS && (
+        <EmergencySOS
+          onClose={() => {
+            setShowEmergencySOS(false);
+            speakText('Emergency panel closed');
+          }}
+          speakText={speakText}
+          currentLocation={currentLocation}
+        />
+      )}
       {/* Enhanced Background with Mesh Gradient */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-mesh-gradient opacity-30" />
@@ -809,12 +906,29 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         <div className="flex flex-col items-center space-y-6">
           
           {/* Enhanced Control Buttons */}
-          <div className="absolute top-6 right-6">
+          <div className="absolute top-6 right-6 flex gap-2">
+            <Button
+              onClick={() => {
+                const newTheme = cycleTheme();
+                triggerHaptic('selection');
+                toast({
+                  title: 'Theme Changed',
+                  description: `Now using ${themeName}`
+                });
+              }}
+              variant="outline"
+              size="icon"
+              className="glass border-2 border-border/50 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-primary/50 hover:bg-primary/5 critical-button"
+              title={`Current theme: ${themeName}. Click to cycle themes`}
+              aria-label={`Change theme. Current: ${themeName}`}
+            >
+              <Palette className="w-5 h-5" />
+            </Button>
             <Button
               onClick={onSettingsClick}
               variant="outline"
               size="icon"
-              className="glass border-2 border-border/50 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-primary/50 hover:bg-primary/5"
+              className="glass border-2 border-border/50 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-primary/50 hover:bg-primary/5 critical-button"
               title="Open Settings"
               aria-label="Open settings menu"
             >
@@ -825,22 +939,22 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           {/* Enhanced Capture Button */}
           <div className="flex flex-col items-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
             <div className="relative">
-              {/* Main Capture Button */}
+              {/* Main Capture Button - 80x80 minimum for accessibility */}
               <Button
-                onClick={isVoiceMode && isRecording ? stopVoiceAssistant : isVoiceMode ? () => { setIsVoiceMode(false); setCapturedImageForVoice(null); } : captureImage}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
+                {...mainButtonGestures}
                 disabled={isLoading && !isRecording}
                 className={`
-                  relative w-36 h-36 md:w-40 md:h-40 rounded-full 
-                  glass border-4 ${isVoiceMode ? 'border-accent/50' : 'border-primary/30'} backdrop-blur-md transition-all duration-300 hover:scale-105 
-                  bg-gradient-to-br ${isVoiceMode ? 'from-accent/20 via-accent/10' : 'from-primary/20 via-primary/10'} to-transparent
+                  relative w-48 h-48 md:w-56 md:h-56 rounded-full critical-button
+                  glass border-4 backdrop-blur-md transition-all duration-300 hover:scale-105 
+                  bg-gradient-to-br to-transparent
                   shadow-elevated hover:shadow-2xl group overflow-hidden
+                  ${isVoiceMode ? 'border-accent/50 from-accent/20 via-accent/10' : 'border-primary/30 from-primary/20 via-primary/10'}
                   ${isLoading ? 'animate-pulse' : 'hover:shadow-primary/25 active:scale-95'}
-                  ${isRecording ? 'animate-pulse border-red-500/50' : ''}
+                  ${isRecording ? 'animate-neon-pulse border-red-500/50' : ''}
+                  ${isSpeaking ? 'animate-pulse-glow' : ''}
                 `}
-                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text" : currentMode === 'navigation' ? "Get navigation guidance" : "Analyze surroundings. Swipe to change modes."}
-                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Take picture and analyze. Swipe horizontally to cycle modes.'}`}
+                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text. Long press for voice questions." : currentMode === 'navigation' ? "Get navigation guidance. Swipe to change modes." : "Analyze surroundings. Swipe horizontally to cycle modes. Long press for voice assistant."}
+                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Main action button. Tap to capture, long press for voice, swipe to change modes.'}`}
               >
                 {/* Background shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -954,12 +1068,14 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         </div>
 
         {/* Analysis History */}
-        <AnalysisHistory
-          history={analysisHistory}
-          onReplay={(description) => speakText(description, true)}
-          onClear={() => setAnalysisHistory([])}
-          speakText={speakText}
-        />
+        <div data-history>
+          <AnalysisHistory
+            history={analysisHistory}
+            onReplay={(description) => speakText(description, true)}
+            onClear={() => setAnalysisHistory([])}
+            speakText={speakText}
+          />
+        </div>
 
         {/* Emergency Panel */}
         <EmergencyPanel

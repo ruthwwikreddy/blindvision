@@ -115,6 +115,69 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* High Contrast Light Theme */
+  .high-contrast-light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 90%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 85%;
+    --muted-foreground: 0 0% 20%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --input: 0 0% 95%;
+    --ring: 0 0% 0%;
+  }
+
+  /* High Contrast Dark Theme */
+  .high-contrast-dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 80%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 10%;
+    --ring: 0 0% 100%;
+  }
+
+  /* Yellow on Black Theme (optimal for many low vision users) */
+  .yellow-black {
+    --background: 0 0% 0%;
+    --foreground: 48 100% 50%;
+    --card: 0 0% 5%;
+    --card-foreground: 48 100% 50%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 48 100% 20%;
+    --secondary-foreground: 48 100% 50%;
+    --muted: 48 50% 15%;
+    --muted-foreground: 48 100% 40%;
+    --accent: 48 100% 60%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 48 100% 50%;
+    --input: 0 0% 10%;
+    --ring: 48 100% 50%;
+  }
 }
 
 @layer base {
