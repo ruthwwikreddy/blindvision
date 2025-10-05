@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Globe, Info, Zap, Palette } from 'lucide-react';
+import { ArrowLeft, Globe, Info, Palette, HardDrive, Trash2, Zap } from 'lucide-react';
 import { QuickModeSettings } from './QuickModeSettings';
 import { FloatingIconSettings } from './FloatingIconSettings';
 import { SetupFlow } from './SetupFlow';
+import { useOfflineCache } from '@/hooks/useOfflineCache';
 
 interface SettingsMenuProps {
   language: string;
@@ -28,6 +29,7 @@ export const SettingsMenu = ({
   speakText 
 }: SettingsMenuProps) => {
   const [currentView, setCurrentView] = useState<SettingsView>('main');
+  const { cache, clearCache, getCacheSize } = useOfflineCache();
 
   const handleViewChange = (view: SettingsView) => {
     setCurrentView(view);
@@ -200,6 +202,37 @@ export const SettingsMenu = ({
                 <p className="text-muted-foreground">Customizable</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Offline Cache */}
+        <Card className="border-border shadow-soft bg-muted/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <HardDrive className="w-5 h-5 text-primary" />
+              Offline Cache
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Cached analyses</span>
+              <span className="font-mono text-foreground">{cache.length} items</span>
+            </div>
+            
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Storage used</span>
+              <span className="font-mono text-foreground">{getCacheSize()} KB</span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearCache}
+              className="w-full gap-2 mt-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Cache
+            </Button>
           </CardContent>
         </Card>
       </div>

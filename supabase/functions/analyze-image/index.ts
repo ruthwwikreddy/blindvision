@@ -28,7 +28,7 @@ serve(async (req) => {
       );
     }
 
-    const { imageDataUrl, language, detailLevel, isQuickMode = false, question } = await req.json();
+    const { imageDataUrl, language, detailLevel, isQuickMode = false, question, mode } = await req.json();
     
     if (!imageDataUrl) {
       return new Response(
@@ -92,7 +92,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an AI assistant that helps visually impaired users navigate their environment. Focus on describing objects, text, obstacles, and spatial relationships. For people, describe their general presence, position, and actions without identifying who they are (e.g., "a person sitting at a table" rather than trying to identify them).'
+            content: mode === 'reading' 
+              ? 'You are an AI assistant helping visually impaired users read text and documents. Extract ALL visible text accurately, maintain structure, identify document types, and read tables row by row. For forms, identify fields and labels. Detect QR/barcodes. If no text, describe visual content.'
+              : mode === 'navigation'
+              ? 'You are an AI navigation assistant for visually impaired users. Provide clear path status, obstacle locations with distances, ground surface details, doorways, hazards, and directional guidance using clear terms (2 steps ahead, on your left). Warn about low-hanging objects, stairs, ramps.'
+              : 'You are an AI assistant helping visually impaired users understand their surroundings. Describe objects with approximate distances (e.g., "chair 1 meter ahead"), count people and their positions (no identification), spatial layout, dominant colors, visible text, hazards, and overall scene context.'
           },
           {
             role: 'user',

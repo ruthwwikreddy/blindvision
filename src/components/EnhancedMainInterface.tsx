@@ -11,6 +11,8 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { useEnhancedGestures } from '@/hooks/useEnhancedGestures';
 import { useThemeMode } from '@/hooks/useThemeMode';
+import { useOfflineCache } from '@/hooks/useOfflineCache';
+import { preprocessImage, compressImage } from '@/utils/imagePreprocessing';
 import { TutorialOverlay } from './TutorialOverlay';
 import { EmergencySOS } from './EmergencySOS';
 import '../types/speech.d.ts';
@@ -46,6 +48,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   // New hooks
   const { triggerHaptic } = useHapticFeedback();
   const { themeMode, cycleTheme, themeName } = useThemeMode();
+  const { addToCache, cache } = useOfflineCache();
   const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceRecorder();
   
   // Emergency tap detection
@@ -261,14 +264,26 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       setIsProcessing(true);
       triggerHaptic('capture');
       
+      speakText(question ? "Processing your question..." : "Analyzing image...");
+      
+      // Preprocess image for better results
+      const processedImage = await preprocessImage(imageDataUrl, {
+        enhanceContrast: currentMode === 'reading',
+        adjustBrightness: true,
+      });
+
+      // Compress for faster upload
+      const compressedImage = await compressImage(processedImage, 0.85);
+      
       // Use OpenAI for analysis with mode-specific prompts
       const { data, error } = await supabase.functions.invoke('analyze-image', {
         body: {
-          imageDataUrl,
+          imageDataUrl: compressedImage,
           language,
           detailLevel: currentMode === 'reading' ? 'text-extraction' : currentMode === 'navigation' ? 'navigation-focused' : detailLevel,
           isQuickMode: currentMode === 'reading' ? false : isQuickMode,
-          question
+          question,
+          mode: currentMode
         }
       });
       
@@ -293,9 +308,16 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         source: 'openai'
       });
 
+      // Add to cache for offline access
+      const cacheId = addToCache({
+        mode: currentMode,
+        description,
+        imageData: compressedImage,
+      });
+
       // Add to analysis history
       const newEntry: AnalysisEntry = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: cacheId,
         type: currentMode,
         description,
         timestamp,
