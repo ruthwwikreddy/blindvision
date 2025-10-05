@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "Blind Vision Assistant",
+    "tagline": "See the world through AI"
+  },
+  "modes": {
+    "surroundings": "Surroundings",
+    "reading": "Reading",
+    "navigation": "Navigation",
+    "safety": "Safety"
+  },
+  "actions": {
+    "capture": "Capture & Analyze",
+    "analyze": "Analyze",
+    "stop": "Stop",
+    "listening": "Listening...",
+    "processing": "Processing...",
+    "speaking": "Speaking..."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "detailLevel": "Detail Level",
+    "detailLevels": {
+      "low": "Low - Quick overview",
+      "medium": "Medium - Balanced",
+      "high": "High - Detailed"
+    },
+    "quickMode": "Quick Mode",
+    "quickModeDesc": "Fast analysis with voice questions",
+    "continuousMode": "Continuous Mode",
+    "continuousModeDesc": "Automatic analysis every few seconds",
+    "accessibility": "Accessibility",
+    "theme": "Theme Mode",
+    "offlineCache": "Offline Cache",
+    "cacheSize": "Cache Size",
+    "cacheItems": "Cached Items",
+    "clearCache": "Clear Cache",
+    "tutorial": "Show Tutorial",
+    "version": "Version"
+  },
+  "accessibility": {
+    "title": "Accessibility Settings",
+    "haptics": "Haptic Feedback",
+    "hapticsDesc": "Vibration patterns for actions",
+    "audioFeedback": "Audio Feedback",
+    "audioFeedbackDesc": "Sounds for all actions",
+    "gestures": "Enhanced Gestures",
+    "gesturesDesc": "Multi-touch controls",
+    "highContrast": "High Contrast",
+    "highContrastDesc": "Better visibility"
+  },
+  "tutorial": {
+    "welcome": "Welcome to Blind Vision Assistant",
+    "welcomeDesc": "Let me show you how to use this app",
+    "modes": "Select Your Mode",
+    "modesDesc": "Choose from Surroundings, Reading, Navigation, or Safety mode",
+    "capture": "Capture & Analyze",
+    "captureDesc": "Tap the large button to capture and analyze what's in front of you",
+    "voice": "Voice Questions",
+    "voiceDesc": "Enable Quick Mode to ask questions about what you're seeing",
+    "gestures": "Gestures",
+    "gesturesDesc": "• Two-finger tap: Open settings\n• Swipe down: View history\n• Triple tap: Emergency SOS",
+    "keyboard": "Keyboard Shortcuts",
+    "keyboardDesc": "• Space: Capture\n• M: Change mode\n• S: Settings\n• T: Toggle theme\n• H: View history"
+  },
+  "emergency": {
+    "sos": "Emergency SOS",
+    "activated": "SOS Activated",
+    "calling": "Calling emergency services...",
+    "cancel": "Cancel",
+    "call": "Call Emergency",
+    "shareLocation": "Share Location"
+  },
+  "history": {
+    "title": "Analysis History",
+    "empty": "No analysis history yet",
+    "clearAll": "Clear All"
+  },
+  "errors": {
+    "cameraAccess": "Camera access denied. Please enable camera permissions.",
+    "analysisError": "Analysis failed. Please try again.",
+    "networkError": "Network error. Please check your connection.",
+    "retrying": "Retrying..."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "ar": "Arabic",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "hi": "Hindi",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ko": "Korean"
+  }
+}

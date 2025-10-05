@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "Assistant de Vision pour Aveugles",
+    "tagline": "Voir le monde à travers l'IA"
+  },
+  "modes": {
+    "surroundings": "Environnement",
+    "reading": "Lecture",
+    "navigation": "Navigation",
+    "safety": "Sécurité"
+  },
+  "actions": {
+    "capture": "Capturer et Analyser",
+    "analyze": "Analyser",
+    "stop": "Arrêter",
+    "listening": "Écoute...",
+    "processing": "Traitement...",
+    "speaking": "Parle..."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "detailLevel": "Niveau de Détail",
+    "detailLevels": {
+      "low": "Faible - Aperçu rapide",
+      "medium": "Moyen - Équilibré",
+      "high": "Élevé - Détaillé"
+    },
+    "quickMode": "Mode Rapide",
+    "quickModeDesc": "Analyse rapide avec questions vocales",
+    "continuousMode": "Mode Continu",
+    "continuousModeDesc": "Analyse automatique toutes les quelques secondes",
+    "accessibility": "Accessibilité",
+    "theme": "Mode Thème",
+    "offlineCache": "Cache hors ligne",
+    "cacheSize": "Taille du cache",
+    "cacheItems": "Éléments en cache",
+    "clearCache": "Vider le cache",
+    "tutorial": "Afficher le tutoriel",
+    "version": "Version"
+  },
+  "accessibility": {
+    "title": "Paramètres d'Accessibilité",
+    "haptics": "Retour Haptique",
+    "hapticsDesc": "Modèles de vibration pour les actions",
+    "audioFeedback": "Retour Audio",
+    "audioFeedbackDesc": "Sons pour toutes les actions",
+    "gestures": "Gestes Améliorés",
+    "gesturesDesc": "Contrôles multi-touch",
+    "highContrast": "Contraste Élevé",
+    "highContrastDesc": "Meilleure visibilité"
+  },
+  "tutorial": {
+    "welcome": "Bienvenue dans l'Assistant de Vision pour Aveugles",
+    "welcomeDesc": "Laissez-moi vous montrer comment utiliser cette application",
+    "modes": "Sélectionnez Votre Mode",
+    "modesDesc": "Choisissez entre Environnement, Lecture, Navigation ou mode Sécurité",
+    "capture": "Capturer et Analyser",
+    "captureDesc": "Appuyez sur le grand bouton pour capturer et analyser ce qui est devant vous",
+    "voice": "Questions Vocales",
+    "voiceDesc": "Activez le Mode Rapide pour poser des questions sur ce que vous voyez",
+    "gestures": "Gestes",
+    "gesturesDesc": "• Appui à deux doigts: Ouvrir les paramètres\n• Glisser vers le bas: Voir l'historique\n• Triple appui: SOS d'urgence",
+    "keyboard": "Raccourcis Clavier",
+    "keyboardDesc": "• Espace: Capturer\n• M: Changer de mode\n• S: Paramètres\n• T: Changer de thème\n• H: Voir l'historique"
+  },
+  "emergency": {
+    "sos": "SOS d'Urgence",
+    "activated": "SOS Activé",
+    "calling": "Appel des services d'urgence...",
+    "cancel": "Annuler",
+    "call": "Appeler l'Urgence",
+    "shareLocation": "Partager la Position"
+  },
+  "history": {
+    "title": "Historique d'Analyse",
+    "empty": "Aucun historique d'analyse pour le moment",
+    "clearAll": "Tout Effacer"
+  },
+  "errors": {
+    "cameraAccess": "Accès à la caméra refusé. Veuillez activer les autorisations de la caméra.",
+    "analysisError": "L'analyse a échoué. Veuillez réessayer.",
+    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "retrying": "Nouvelle tentative..."
+  },
+  "languages": {
+    "en": "Anglais",
+    "es": "Espagnol",
+    "fr": "Français",
+    "de": "Allemand",
+    "ar": "Arabe",
+    "zh": "Chinois",
+    "ja": "Japonais",
+    "hi": "Hindi",
+    "it": "Italien",
+    "pt": "Portugais",
+    "ko": "Coréen"
+  }
+}

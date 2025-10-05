@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "Blinden-Seh-Assistent",
+    "tagline": "Sehe die Welt durch KI"
+  },
+  "modes": {
+    "surroundings": "Umgebung",
+    "reading": "Lesen",
+    "navigation": "Navigation",
+    "safety": "Sicherheit"
+  },
+  "actions": {
+    "capture": "Erfassen und Analysieren",
+    "analyze": "Analysieren",
+    "stop": "Stoppen",
+    "listening": "Zuhören...",
+    "processing": "Verarbeitung...",
+    "speaking": "Spricht..."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "detailLevel": "Detailstufe",
+    "detailLevels": {
+      "low": "Niedrig - Schneller Überblick",
+      "medium": "Mittel - Ausgewogen",
+      "high": "Hoch - Detailliert"
+    },
+    "quickMode": "Schnellmodus",
+    "quickModeDesc": "Schnelle Analyse mit Sprachfragen",
+    "continuousMode": "Kontinuierlicher Modus",
+    "continuousModeDesc": "Automatische Analyse alle paar Sekunden",
+    "accessibility": "Barrierefreiheit",
+    "theme": "Themenmodus",
+    "offlineCache": "Offline-Cache",
+    "cacheSize": "Cache-Größe",
+    "cacheItems": "Gecachte Elemente",
+    "clearCache": "Cache leeren",
+    "tutorial": "Tutorial anzeigen",
+    "version": "Version"
+  },
+  "accessibility": {
+    "title": "Barrierefreiheitseinstellungen",
+    "haptics": "Haptisches Feedback",
+    "hapticsDesc": "Vibrationsmuster für Aktionen",
+    "audioFeedback": "Audio-Feedback",
+    "audioFeedbackDesc": "Töne für alle Aktionen",
+    "gestures": "Erweiterte Gesten",
+    "gesturesDesc": "Multi-Touch-Steuerung",
+    "highContrast": "Hoher Kontrast",
+    "highContrastDesc": "Bessere Sichtbarkeit"
+  },
+  "tutorial": {
+    "welcome": "Willkommen beim Blinden-Seh-Assistenten",
+    "welcomeDesc": "Lass mich dir zeigen, wie man diese App verwendet",
+    "modes": "Wähle deinen Modus",
+    "modesDesc": "Wähle zwischen Umgebung, Lesen, Navigation oder Sicherheitsmodus",
+    "capture": "Erfassen und Analysieren",
+    "captureDesc": "Tippe auf den großen Button, um zu erfassen und zu analysieren, was vor dir ist",
+    "voice": "Sprachfragen",
+    "voiceDesc": "Aktiviere den Schnellmodus, um Fragen zu dem zu stellen, was du siehst",
+    "gestures": "Gesten",
+    "gesturesDesc": "• Zwei-Finger-Tippen: Einstellungen öffnen\n• Nach unten wischen: Verlauf anzeigen\n• Dreifaches Tippen: Notfall-SOS",
+    "keyboard": "Tastenkombinationen",
+    "keyboardDesc": "• Leertaste: Erfassen\n• M: Modus wechseln\n• S: Einstellungen\n• T: Thema wechseln\n• H: Verlauf anzeigen"
+  },
+  "emergency": {
+    "sos": "Notfall-SOS",
+    "activated": "SOS Aktiviert",
+    "calling": "Rufe Notdienste an...",
+    "cancel": "Abbrechen",
+    "call": "Notruf",
+    "shareLocation": "Standort Teilen"
+  },
+  "history": {
+    "title": "Analyseverlauf",
+    "empty": "Noch kein Analyseverlauf",
+    "clearAll": "Alles Löschen"
+  },
+  "errors": {
+    "cameraAccess": "Kamerazugriff verweigert. Bitte aktiviere die Kameraberechtigungen.",
+    "analysisError": "Analyse fehlgeschlagen. Bitte versuche es erneut.",
+    "networkError": "Netzwerkfehler. Bitte überprüfe deine Verbindung.",
+    "retrying": "Erneuter Versuch..."
+  },
+  "languages": {
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "ar": "Arabisch",
+    "zh": "Chinesisch",
+    "ja": "Japanisch",
+    "hi": "Hindi",
+    "it": "Italienisch",
+    "pt": "Portugiesisch",
+    "ko": "Koreanisch"
+  }
+}

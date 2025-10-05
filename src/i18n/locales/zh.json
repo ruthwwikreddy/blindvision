@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "盲人视觉助手",
+    "tagline": "通过人工智能看世界"
+  },
+  "modes": {
+    "surroundings": "周围环境",
+    "reading": "阅读",
+    "navigation": "导航",
+    "safety": "安全"
+  },
+  "actions": {
+    "capture": "捕获和分析",
+    "analyze": "分析",
+    "stop": "停止",
+    "listening": "正在聆听...",
+    "processing": "处理中...",
+    "speaking": "正在说话..."
+  },
+  "settings": {
+    "title": "设置",
+    "language": "语言",
+    "detailLevel": "详细程度",
+    "detailLevels": {
+      "low": "低 - 快速概览",
+      "medium": "中 - 平衡",
+      "high": "高 - 详细"
+    },
+    "quickMode": "快速模式",
+    "quickModeDesc": "快速分析并提供语音问题",
+    "continuousMode": "连续模式",
+    "continuousModeDesc": "每隔几秒自动分析",
+    "accessibility": "辅助功能",
+    "theme": "主题模式",
+    "offlineCache": "离线缓存",
+    "cacheSize": "缓存大小",
+    "cacheItems": "缓存项",
+    "clearCache": "清除缓存",
+    "tutorial": "显示教程",
+    "version": "版本"
+  },
+  "accessibility": {
+    "title": "辅助功能设置",
+    "haptics": "触觉反馈",
+    "hapticsDesc": "操作的振动模式",
+    "audioFeedback": "音频反馈",
+    "audioFeedbackDesc": "所有操作的声音",
+    "gestures": "增强手势",
+    "gesturesDesc": "多点触控控制",
+    "highContrast": "高对比度",
+    "highContrastDesc": "更好的可见性"
+  },
+  "tutorial": {
+    "welcome": "欢迎使用盲人视觉助手",
+    "welcomeDesc": "让我向你展示如何使用这个应用",
+    "modes": "选择你的模式",
+    "modesDesc": "从周围环境、阅读、导航或安全模式中选择",
+    "capture": "捕获和分析",
+    "captureDesc": "点击大按钮来捕获和分析你面前的东西",
+    "voice": "语音问题",
+    "voiceDesc": "启用快速模式来提问你看到的内容",
+    "gestures": "手势",
+    "gesturesDesc": "• 双指点击：打开设置\n• 向下滑动：查看历史\n• 三次点击：紧急SOS",
+    "keyboard": "键盘快捷键",
+    "keyboardDesc": "• 空格：捕获\n• M：更改模式\n• S：设置\n• T：切换主题\n• H：查看历史"
+  },
+  "emergency": {
+    "sos": "紧急SOS",
+    "activated": "SOS已激活",
+    "calling": "正在拨打紧急服务...",
+    "cancel": "取消",
+    "call": "呼叫紧急服务",
+    "shareLocation": "分享位置"
+  },
+  "history": {
+    "title": "分析历史",
+    "empty": "还没有分析历史",
+    "clearAll": "全部清除"
+  },
+  "errors": {
+    "cameraAccess": "相机访问被拒绝。请启用相机权限。",
+    "analysisError": "分析失败。请重试。",
+    "networkError": "网络错误。请检查你的连接。",
+    "retrying": "重试中..."
+  },
+  "languages": {
+    "en": "英语",
+    "es": "西班牙语",
+    "fr": "法语",
+    "de": "德语",
+    "ar": "阿拉伯语",
+    "zh": "中文",
+    "ja": "日语",
+    "hi": "印地语",
+    "it": "意大利语",
+    "pt": "葡萄牙语",
+    "ko": "韩语"
+  }
+}

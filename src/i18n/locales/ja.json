@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "視覚障害者向けアシスタント",
+    "tagline": "AIを通して世界を見る"
+  },
+  "modes": {
+    "surroundings": "周囲",
+    "reading": "読書",
+    "navigation": "ナビゲーション",
+    "safety": "安全"
+  },
+  "actions": {
+    "capture": "キャプチャして分析",
+    "analyze": "分析",
+    "stop": "停止",
+    "listening": "聞いています...",
+    "processing": "処理中...",
+    "speaking": "話しています..."
+  },
+  "settings": {
+    "title": "設定",
+    "language": "言語",
+    "detailLevel": "詳細レベル",
+    "detailLevels": {
+      "low": "低 - クイック概要",
+      "medium": "中 - バランス",
+      "high": "高 - 詳細"
+    },
+    "quickMode": "クイックモード",
+    "quickModeDesc": "音声質問による高速分析",
+    "continuousMode": "連続モード",
+    "continuousModeDesc": "数秒ごとに自動分析",
+    "accessibility": "アクセシビリティ",
+    "theme": "テーマモード",
+    "offlineCache": "オフラインキャッシュ",
+    "cacheSize": "キャッシュサイズ",
+    "cacheItems": "キャッシュアイテム",
+    "clearCache": "キャッシュをクリア",
+    "tutorial": "チュートリアルを表示",
+    "version": "バージョン"
+  },
+  "accessibility": {
+    "title": "アクセシビリティ設定",
+    "haptics": "触覚フィードバック",
+    "hapticsDesc": "アクションの振動パターン",
+    "audioFeedback": "オーディオフィードバック",
+    "audioFeedbackDesc": "すべてのアクションのサウンド",
+    "gestures": "拡張ジェスチャー",
+    "gesturesDesc": "マルチタッチコントロール",
+    "highContrast": "ハイコントラスト",
+    "highContrastDesc": "より良い可視性"
+  },
+  "tutorial": {
+    "welcome": "視覚障害者向けアシスタントへようこそ",
+    "welcomeDesc": "このアプリの使い方を紹介します",
+    "modes": "モードを選択",
+    "modesDesc": "周囲、読書、ナビゲーション、または安全モードから選択",
+    "capture": "キャプチャして分析",
+    "captureDesc": "大きなボタンをタップして、目の前のものをキャプチャして分析します",
+    "voice": "音声質問",
+    "voiceDesc": "クイックモードを有効にして、見ているものについて質問します",
+    "gestures": "ジェスチャー",
+    "gesturesDesc": "• 2本指タップ：設定を開く\n• 下にスワイプ：履歴を表示\n• 3回タップ：緊急SOS",
+    "keyboard": "キーボードショートカット",
+    "keyboardDesc": "• スペース：キャプチャ\n• M：モード変更\n• S：設定\n• T：テーマ切り替え\n• H：履歴表示"
+  },
+  "emergency": {
+    "sos": "緊急SOS",
+    "activated": "SOS起動",
+    "calling": "緊急サービスに電話中...",
+    "cancel": "キャンセル",
+    "call": "緊急通報",
+    "shareLocation": "位置情報を共有"
+  },
+  "history": {
+    "title": "分析履歴",
+    "empty": "分析履歴はまだありません",
+    "clearAll": "すべてクリア"
+  },
+  "errors": {
+    "cameraAccess": "カメラアクセスが拒否されました。カメラ権限を有効にしてください。",
+    "analysisError": "分析に失敗しました。もう一度お試しください。",
+    "networkError": "ネットワークエラー。接続を確認してください。",
+    "retrying": "再試行中..."
+  },
+  "languages": {
+    "en": "英語",
+    "es": "スペイン語",
+    "fr": "フランス語",
+    "de": "ドイツ語",
+    "ar": "アラビア語",
+    "zh": "中国語",
+    "ja": "日本語",
+    "hi": "ヒンディー語",
+    "it": "イタリア語",
+    "pt": "ポルトガル語",
+    "ko": "韓国語"
+  }
+}
