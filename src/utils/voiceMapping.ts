@@ -12,6 +12,16 @@ export const getVoiceForLanguage = (language: string): string => {
     'ko': 'ko-KR', // Korean
     'ar': 'ar-SA', // Arabic
     'hi': 'hi-IN', // Hindi
+    'bn': 'bn-IN', // Bengali
+    'te': 'te-IN', // Telugu
+    'mr': 'mr-IN', // Marathi
+    'ta': 'ta-IN', // Tamil
+    'gu': 'gu-IN', // Gujarati
+    'kn': 'kn-IN', // Kannada
+    'ml': 'ml-IN', // Malayalam
+    'pa': 'pa-IN', // Punjabi
+    'or': 'or-IN', // Odia
+    'ur': 'ur-IN', // Urdu
   };
 
   return voiceMap[language] || 'en-US';
