@@ -7,7 +7,12 @@
     "surroundings": "Surroundings",
     "reading": "Reading",
     "navigation": "Navigation",
-    "safety": "Safety"
+    "safety": "Safety",
+    "currency": "Currency ID",
+    "medication": "Medication",
+    "product": "Product ID",
+    "color": "Color Analysis",
+    "comparison": "Scene Compare"
   },
   "actions": {
     "capture": "Capture & Analyze",
@@ -15,7 +20,8 @@
     "stop": "Stop",
     "listening": "Listening...",
     "processing": "Processing...",
-    "speaking": "Speaking..."
+    "speaking": "Speaking...",
+    "comparing": "Comparing scenes..."
   },
   "settings": {
     "title": "Settings",
@@ -31,6 +37,7 @@
     "continuousMode": "Continuous Mode",
     "continuousModeDesc": "Automatic analysis every few seconds",
     "accessibility": "Accessibility",
+    "privacy": "Privacy & Storage",
     "theme": "Theme Mode",
     "offlineCache": "Offline Cache",
     "cacheSize": "Cache Size",
@@ -38,6 +45,25 @@
     "clearCache": "Clear Cache",
     "tutorial": "Show Tutorial",
     "version": "Version"
+  },
+  "privacy": {
+    "title": "Privacy Settings",
+    "localProcessing": "Local Processing",
+    "localProcessingDesc": "Process images locally when possible",
+    "privacyMode": "Privacy Mode",
+    "privacyModeDesc": "No cloud storage of images",
+    "autoDelete": "Auto-delete Images",
+    "autoDeleteDesc": "Delete images after analysis",
+    "anonymousStats": "Anonymous Usage Stats",
+    "anonymousStatsDesc": "Help improve the app",
+    "dataRetention": "Data Retention",
+    "dataRetentionOptions": {
+      "immediate": "Delete Immediately",
+      "hour": "1 Hour",
+      "day": "1 Day",
+      "week": "1 Week",
+      "month": "1 Month"
+    }
   },
   "accessibility": {
     "title": "Accessibility Settings",
@@ -48,7 +74,9 @@
     "gestures": "Enhanced Gestures",
     "gesturesDesc": "Multi-touch controls",
     "highContrast": "High Contrast",
-    "highContrastDesc": "Better visibility"
+    "highContrastDesc": "Better visibility",
+    "bluetooth": "Bluetooth Button",
+    "bluetoothDesc": "Connect external trigger button"
   },
   "tutorial": {
     "welcome": "Welcome to Blind Vision Assistant",
@@ -77,11 +105,21 @@
     "empty": "No analysis history yet",
     "clearAll": "Clear All"
   },
+  "analysis": {
+    "currency": "Currency Identified",
+    "medication": "Medication Information",
+    "product": "Product Identified",
+    "barcode": "Barcode Detected",
+    "qrcode": "QR Code Detected",
+    "color": "Color Analysis",
+    "rgb": "RGB Values"
+  },
   "errors": {
     "cameraAccess": "Camera access denied. Please enable camera permissions.",
     "analysisError": "Analysis failed. Please try again.",
     "networkError": "Network error. Please check your connection.",
-    "retrying": "Retrying..."
+    "retrying": "Retrying...",
+    "bluetoothUnavailable": "Bluetooth not available on this device"
   },
   "languages": {
     "en": "English",
@@ -94,6 +132,16 @@
     "hi": "Hindi",
     "it": "Italian",
     "pt": "Portuguese",
-    "ko": "Korean"
+    "ko": "Korean",
+    "bn": "Bengali",
+    "te": "Telugu",
+    "mr": "Marathi",
+    "ta": "Tamil",
+    "gu": "Gujarati",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "pa": "Punjabi",
+    "or": "Odia",
+    "ur": "Urdu"
   }
 }

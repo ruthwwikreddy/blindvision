@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Compass, BookOpen, Eye, Mic, Navigation } from 'lucide-react';
+import { Eye, BookOpen, Navigation, DollarSign, Pill, Package, Palette, GitCompare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
-export type AppMode = 'surroundings' | 'reading' | 'navigation';
+export type AppMode = 'surroundings' | 'reading' | 'navigation' | 'currency' | 'medication' | 'product' | 'color' | 'comparison';
 
 interface ModeSelectorProps {
   currentMode: AppMode;
@@ -14,27 +15,51 @@ interface ModeSelectorProps {
 const MODES = [
   {
     id: 'surroundings' as AppMode,
-    title: 'Surroundings',
-    description: 'Describe what\'s around you',
     icon: Eye,
     emoji: '👁️',
     shortcut: '1'
   },
   {
     id: 'reading' as AppMode,
-    title: 'Reading',
-    description: 'Read text from documents and signs',
     icon: BookOpen,
     emoji: '📖',
     shortcut: '2'
   },
   {
     id: 'navigation' as AppMode,
-    title: 'Navigation',
-    description: 'Get directions and navigate spaces',
     icon: Navigation,
     emoji: '🧭',
     shortcut: '3'
+  },
+  {
+    id: 'currency' as AppMode,
+    icon: DollarSign,
+    emoji: '💵',
+    shortcut: '4'
+  },
+  {
+    id: 'medication' as AppMode,
+    icon: Pill,
+    emoji: '💊',
+    shortcut: '5'
+  },
+  {
+    id: 'product' as AppMode,
+    icon: Package,
+    emoji: '📦',
+    shortcut: '6'
+  },
+  {
+    id: 'color' as AppMode,
+    icon: Palette,
+    emoji: '🎨',
+    shortcut: '7'
+  },
+  {
+    id: 'comparison' as AppMode,
+    icon: GitCompare,
+    emoji: '🔄',
+    shortcut: '8'
   }
 ];
 
@@ -44,15 +69,17 @@ export const ModeSelector = ({
   speakText
 }: ModeSelectorProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { t } = useTranslation();
 
   const handleModeSelect = useCallback((mode: AppMode) => {
     const selectedMode = MODES.find(m => m.id === mode);
     if (selectedMode) {
-      speakText(`${selectedMode.title} mode selected. ${selectedMode.description}`);
+      const title = t(`modes.${mode}`);
+      speakText(`${title} mode selected`);
       onModeChange(mode);
       setIsExpanded(false);
     }
-  }, [onModeChange, speakText]);
+  }, [onModeChange, speakText, t]);
 
   const currentModeData = MODES.find(m => m.id === currentMode);
 
@@ -68,11 +95,8 @@ export const ModeSelector = ({
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-foreground mb-1 text-balance">
-                  {currentModeData?.title} Mode
+                  {t(`modes.${currentMode}`)} Mode
                 </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed text-pretty">
-                  {currentModeData?.description}
-                </p>
               </div>
             </div>
             <Button
@@ -105,7 +129,7 @@ export const ModeSelector = ({
                 }
               `}
               style={{ animationDelay: `${index * 0.1}s` }}
-              aria-label={`Switch to ${mode.title} mode. ${mode.description}. Press ${mode.shortcut} as shortcut.`}
+              aria-label={`Switch to ${t(`modes.${mode.id}`)} mode. Press ${mode.shortcut} as shortcut.`}
             >
               {/* Background shimmer effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -115,11 +139,8 @@ export const ModeSelector = ({
               </div>
               
               <div className="flex-1 relative z-10">
-                <div className={`font-bold text-lg mb-1 ${currentMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
-                  {mode.title}
-                </div>
-                <div className="text-sm text-muted-foreground leading-relaxed">
-                  {mode.description}
+                <div className={`font-bold text-lg ${currentMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
+                  {t(`modes.${mode.id}`)}
                 </div>
               </div>
               

@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface AnalysisEntry {
   id: string;
-  type: 'surroundings' | 'reading' | 'navigation';
+  type: 'surroundings' | 'reading' | 'navigation' | 'currency' | 'medication' | 'product' | 'color' | 'comparison';
   description: string;
   timestamp: string;
   language: string;
@@ -28,13 +28,23 @@ interface AnalysisHistoryProps {
 const TYPE_EMOJIS = {
   surroundings: '👁️',
   reading: '📖',
-  navigation: '🧭'
+  navigation: '🧭',
+  currency: '💵',
+  medication: '💊',
+  product: '📦',
+  color: '🎨',
+  comparison: '🔄'
 };
 
 const TYPE_LABELS = {
   surroundings: 'Surroundings',
   reading: 'Reading',
-  navigation: 'Navigation'
+  navigation: 'Navigation',
+  currency: 'Currency ID',
+  medication: 'Medication',
+  product: 'Product ID',
+  color: 'Color Analysis',
+  comparison: 'Scene Compare'
 };
 
 export const AnalysisHistory = ({ 
