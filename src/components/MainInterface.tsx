@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { overlayService } from '@/services/overlayService';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { ModeSelector, type AppMode } from './ModeSelector';
+import type { AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
 import '../types/speech.d.ts';
@@ -31,7 +31,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
   const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string; source?: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceCommands, setVoiceCommands] = useState(true);
-  const [currentMode, setCurrentMode] = useState<AppMode>('surroundings');
+  const currentMode: AppMode = 'surroundings'; // Unified mode
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -542,15 +542,6 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
       } else if (command.includes('settings') || command.includes('preferences')) {
         speakText("Opening settings.");
         onSettingsClick();
-      } else if (command.includes('reading mode') || command.includes('read mode')) {
-        setCurrentMode('reading');
-        speakText("Reading mode activated. Point your camera at text to extract and read it aloud.");
-      } else if (command.includes('navigation mode') || command.includes('navigate')) {
-        setCurrentMode('navigation');
-        speakText("Navigation mode activated. Get directions and navigate spaces.");
-      } else if (command.includes('surroundings mode') || command.includes('describe')) {
-        setCurrentMode('surroundings');
-        speakText("Surroundings mode activated. Analyze and describe your environment.");
       } else if (command.includes('emergency') || command.includes('help nearby')) {
         speakText("Finding emergency services and help nearby...");
         // Trigger emergency help function
@@ -707,28 +698,9 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
           event.preventDefault();
           onQuickModeToggle();
           break;
-        case '1':
-          event.preventDefault();
-          setCurrentMode('surroundings');
-          speakText("Surroundings mode selected");
-          break;
-        case '2':
-          event.preventDefault();
-          setCurrentMode('reading');
-          speakText("Reading mode selected");
-          break;
-        case '3':
-          event.preventDefault();
-          setCurrentMode('navigation');
-          speakText("Navigation mode selected");
-          break;
-        case 'v':
-          event.preventDefault();
-          toggleVoiceCommands();
-          break;
         case 'h':
           event.preventDefault();
-          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, V to toggle voice commands, 1 for surroundings, 2 for reading, 3 for navigation, H for help.");
+          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, V to toggle voice commands, H for help.");
           break;
         case 'escape':
           event.preventDefault();
@@ -739,7 +711,7 @@ export const MainInterface = ({ language, detailLevel, isQuickMode, onSettingsCl
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, toggleVoiceCommands, speakText, stopAllAudio, setCurrentMode]);
+  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, toggleVoiceCommands, speakText, stopAllAudio]);
 
   // Get user location
   useEffect(() => {

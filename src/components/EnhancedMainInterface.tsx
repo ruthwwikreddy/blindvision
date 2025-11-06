@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, Camera, Loader2, Volume2, Settings, Copy, Info, Brain, BookOpen, Navigation, Mic, MicOff, Palette, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ModeSelector, type AppMode } from './ModeSelector';
+import type { AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
@@ -33,7 +33,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const [contextualInfo, setContextualInfo] = useState<string>('');
   const [isGettingContext, setIsGettingContext] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<{ timestamp: string; language: string; detailLevel: string; source?: string } | null>(null);
-  const [currentMode, setCurrentMode] = useState<AppMode>('surroundings');
+  const currentMode: AppMode = 'surroundings'; // Unified mode
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; address?: string }>();
   const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -268,22 +268,21 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       
       // Preprocess image for better results
       const processedImage = await preprocessImage(imageDataUrl, {
-        enhanceContrast: currentMode === 'reading',
+        enhanceContrast: true,
         adjustBrightness: true,
       });
 
       // Compress for faster upload
       const compressedImage = await compressImage(processedImage, 0.85);
       
-      // Use OpenAI for analysis with mode-specific prompts
+      // Use OpenAI for comprehensive unified analysis
       const { data, error } = await supabase.functions.invoke('analyze-image', {
         body: {
           imageDataUrl: compressedImage,
           language,
-          detailLevel: currentMode === 'reading' ? 'text-extraction' : currentMode === 'navigation' ? 'navigation-focused' : detailLevel,
-          isQuickMode: currentMode === 'reading' ? false : isQuickMode,
-          question,
-          mode: currentMode
+          detailLevel,
+          isQuickMode,
+          question
         }
       });
       
@@ -329,29 +328,14 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       
       setAnalysisHistory(prev => [newEntry, ...prev.slice(0, 9)]); // Keep last 10
 
-      // Mode-specific speech feedback
-      const modePrefix = question 
-        ? "Answer: "
-        : currentMode === 'reading' 
-          ? "Text found: " 
-          : currentMode === 'navigation' 
-            ? "Navigation guidance: " 
-            : "";
-
       // Speak the description
-      speakText(modePrefix + description);
+      speakText(question ? `Answer: ${description}` : description);
       triggerHaptic('success');
       setRetryCount(0); // Reset retry count on success
       
       toast({
-        title: question ? "Voice Question Answered"
-              : currentMode === 'reading' ? "Text Analysis Complete" 
-              : currentMode === 'navigation' ? "Navigation Analysis Complete"
-              : isQuickMode ? "Quick Analysis Complete" : "Scene Analysis Complete",
-        description: question ? "Your question has been answered and is being read aloud"
-                   : currentMode === 'reading' ? "Text extracted and being read aloud"
-                   : currentMode === 'navigation' ? "Navigation guidance is being read aloud"
-                   : isQuickMode ? "Objects identified and being read aloud" : "Description is ready and being read aloud",
+        title: question ? "Voice Question Answered" : "Comprehensive Analysis Complete",
+        description: question ? "Your question has been answered and is being read aloud" : "Complete scene analysis is being read aloud",
       });
 
     } catch (error) {
@@ -544,30 +528,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [capturedImageForVoice, stopRecording, analyzeImage, toast]);
 
-  // Mode cycling function for swipe
-  const cycleMode = useCallback(() => {
-    const modes: AppMode[] = ['surroundings', 'reading', 'navigation'];
-    const currentIndex = modes.indexOf(currentMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    const nextMode = modes[nextIndex];
-    
-    setCurrentMode(nextMode);
-    triggerHaptic('modeChange');
-    
-    // Speak mode change feedback
-    const modeNames = {
-      'surroundings': 'Surroundings mode',
-      'reading': 'Reading mode', 
-      'navigation': 'Navigation mode'
-    };
-    
-    speakText(`Switched to ${modeNames[nextMode]}`);
-    
-    toast({
-      title: "Mode Changed",
-      description: `Now in ${modeNames[nextMode]}`,
-    });
-  }, [currentMode, speakText, toast, triggerHaptic]);
 
   // Enhanced gesture system for main button
   const mainButtonGestures = useEnhancedGestures({
@@ -587,18 +547,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       if (!isLoading && !isVoiceMode) {
         triggerHaptic('longPress');
         startVoiceAssistant();
-      }
-    },
-    onSwipeLeft: () => {
-      if (!isLoading && !isVoiceMode) {
-        triggerHaptic('swipe');
-        cycleMode();
-      }
-    },
-    onSwipeRight: () => {
-      if (!isLoading && !isVoiceMode) {
-        triggerHaptic('swipe');
-        cycleMode();
       }
     }
   });
@@ -811,30 +759,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           event.preventDefault();
           onQuickModeToggle();
           break;
-        case '1':
-          event.preventDefault();
-          setCurrentMode('surroundings');
-          speakText("Surroundings mode selected");
-          break;
-        case '2':
-          event.preventDefault();
-          setCurrentMode('reading');
-          speakText("Reading mode selected");
-          break;
-        case '3':
-          event.preventDefault();
-          setCurrentMode('navigation');
-          speakText("Navigation mode selected");
-          break;
-        case 'v':
-          event.preventDefault();
-          if (!isLoading && !isVoiceMode) {
-            startVoiceAssistant();
-          }
-          break;
         case 'h':
           event.preventDefault();
-          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, 1 for surroundings, 2 for reading, 3 for navigation, T for theme, H for help.");
+          speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, T for theme, H for help.");
           break;
         case 't':
           event.preventDefault();
@@ -851,7 +778,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio, setCurrentMode, isVoiceMode, isRecording, startVoiceAssistant, stopVoiceAssistant]);
+  }, [isLoading, lastDescription, captureImage, replayDescription, copyToClipboard, getContextualInfo, onSettingsClick, onQuickModeToggle, speakText, stopAllAudio, isVoiceMode, isRecording, startVoiceAssistant, stopVoiceAssistant]);
 
   // Get user location
   useEffect(() => {
@@ -915,15 +842,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       {/* Main Content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-3 md:p-4 space-y-4 md:space-y-6 animate-fade-in-up">
         
-        {/* Enhanced Mode Selector */}
-        <div className="animate-scale-in">
-          <ModeSelector
-            currentMode={currentMode}
-            onModeChange={setCurrentMode}
-            speakText={speakText}
-          />
-        </div>
-
         {/* Enhanced Main Action Area */}
         <div className="flex flex-col items-center space-y-6">
           
@@ -975,8 +893,8 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                   ${isRecording ? 'animate-neon-pulse border-red-500/50' : ''}
                   ${isSpeaking ? 'animate-pulse-glow' : ''}
                 `}
-                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : currentMode === 'reading' ? "Extract and read text. Long press for voice questions." : currentMode === 'navigation' ? "Get navigation guidance. Swipe to change modes." : "Analyze surroundings. Swipe horizontally to cycle modes. Long press for voice assistant."}
-                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Main action button. Tap to capture, long press for voice, swipe to change modes.'}`}
+                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : "Comprehensive AI analysis. Long press for voice questions."}
+                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Main action button. Tap to capture, long press for voice.'}`}
               >
                 {/* Background shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -989,10 +907,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                     <MicOff className="w-16 h-16 md:w-20 md:h-20 text-red-500 transition-transform group-hover:scale-110 animate-pulse" />
                   ) : isVoiceMode ? (
                     <Mic className="w-16 h-16 md:w-20 md:h-20 text-accent-foreground transition-transform group-hover:scale-110" />
-                  ) : currentMode === 'reading' ? (
-                    <BookOpen className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
-                  ) : currentMode === 'navigation' ? (
-                    <Navigation className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
                   ) : (
                     <Eye className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
                   )}
@@ -1003,7 +917,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
             {/* Mode indicator */}
             <div className={`mt-4 px-4 py-2 glass rounded-full border ${isVoiceMode ? 'border-accent/20' : 'border-primary/20'}`}>
               <p className={`text-sm font-medium capitalize ${isVoiceMode ? 'text-accent' : 'text-primary'}`}>
-                {isVoiceMode ? (isRecording ? 'Recording...' : isTranscribing ? 'Processing...' : 'Voice Ready') : `${currentMode} Mode`}
+                {isVoiceMode ? (isRecording ? 'Recording...' : isTranscribing ? 'Processing...' : 'Voice Ready') : 'Comprehensive Analysis'}
               </p>
             </div>
           </div>
@@ -1078,11 +992,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
                   : isTranscribing
                     ? "Processing your voice question..."
                     : "Image captured. Starting voice recording...")
-              : currentMode === 'reading' 
-                ? "Point your camera at text to read it aloud."
-                : currentMode === 'navigation'
-                  ? "Get guidance for safe movement and navigation."
-                  : "Describe your surroundings with AI vision."
+              : "Get comprehensive AI analysis of your surroundings, including text, navigation, objects, and more."
             }
           </p>
         </div>
@@ -1113,7 +1023,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              Latest {currentMode === 'reading' ? 'Text' : currentMode === 'navigation' ? 'Navigation' : 'Analysis'}
+              Latest Analysis
               {isSpeaking && (
                 <div className="flex items-center gap-1 text-accent">
                   <Volume2 className="w-4 h-4 animate-pulse" />

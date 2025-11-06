@@ -42,40 +42,36 @@ serve(async (req) => {
 
     console.log(`Processing image analysis with language: ${language}, detail: ${detailLevel}`);
 
-    // Generate prompt based on detail level, language, mode, and question
-    const generatePrompt = (detailLevel: string, language: string, mode: string, question?: string): string => {
-      const basePrompts = {
-        low: "Briefly identify the most important thing in front of the camera. If it's an object, name it (e.g., 'Keloid ointment tube'). If it's an environment, identify the main element (e.g., 'Staircase with three steps ahead'). Include quick identification or a short translation of any visible sign/label. Keep it under 1–2 sentences.",
-        medium: "Give a clear 2–3 sentence description. For objects: name, purpose, and key label text. For environments: describe people, obstacles, or signage (e.g., 'Restroom on your right'). Add basic context to help with awareness (e.g., 'This is a park with a pathway to your left').",
-        high: "Provide a detailed 3–5 sentence explanation. For objects: include name, appearance, usage, warnings, and instructions (e.g., 'This is a tube of Keloid ointment used for scar treatment. Apply twice daily.'). For environments: include people, obstacles, distances, directions (left, right, forward), and deeper learning context (e.g., 'This park has benches along the pathway and a children's play area to the right.'). Translate any visible text/signs if present.",
-        safety: "Warn only about hazards and obstacles. Use clear, urgent phrasing and directions. Examples: 'Caution: Step down 2 meters ahead.' 'Caution: Bicycle approaching from the left.' Focus only on immediate risks to user safety.",
-        currency: "Identify the currency denomination, country, and condition. Include: (1) Currency type and value (e.g., 'US $20 bill'), (2) Series/year if visible, (3) Condition (new, worn, damaged), (4) Authenticity indicators if present. If multiple bills, count and list each.",
-        medication: "Identify medication with complete safety information: (1) Drug name (brand and generic), (2) Dosage and form (e.g., '500mg tablet'), (3) Expiration date, (4) Warning labels, (5) Usage instructions, (6) Storage requirements. Warn about expired medications.",
-        product: "Identify product with details: (1) Brand and product name, (2) Product type/category, (3) Key features or variants (e.g., flavor, size), (4) Visible price if any, (5) Barcode/QR code detection, (6) Usage or safety warnings. For food items, include allergen information if visible.",
-        color: "Provide detailed color analysis: (1) Dominant colors in order (name and describe), (2) RGB values in format 'R,G,B' for each major color, (3) Color temperature (warm/cool), (4) Pattern or texture description, (5) Color contrast levels. Format: 'Primary: [color name] (R,G,B), Secondary: [color name] (R,G,B)'.",
-        comparison: "Compare two scenes or states: (1) What changed between states, (2) What stayed the same, (3) Notable differences in position, quantity, or appearance, (4) Before/after assessment if temporal. Use clear 'Before' and 'After' language."
-      };
+    // Generate comprehensive unified prompt
+    const generatePrompt = (detailLevel: string, language: string, question?: string): string => {
+      const comprehensivePrompt = detailLevel === 'high' 
+        ? `Provide comprehensive analysis covering:
+
+1. SCENE OVERVIEW: Describe the environment, main objects, and spatial layout
+2. TEXT & SIGNS: Read all visible text, labels, signs, or documents
+3. NAVIGATION: Note obstacles, distances, directions, pathways, stairs, or hazards
+4. SAFETY: Identify any immediate risks or warnings
+5. SPECIAL ITEMS (if present):
+   - Currency: denomination, country, condition
+   - Medication: name, dosage, expiration, warnings
+   - Products: brand, type, price, barcodes, allergens
+   - Colors: dominant colors with RGB values (R,G,B format)
+
+Keep response structured but natural. Prioritize most relevant information first.`
+        : detailLevel === 'medium'
+        ? `Describe what's in the image including: main objects, visible text/labels, any obstacles or navigation info, and safety concerns. Mention currency, medications, or products if present.`
+        : `Briefly identify the main elements and any critical text or safety information.`;
       
-      // Use mode-specific prompt if available, otherwise use detail level prompt
-      let prompt = basePrompts[mode as keyof typeof basePrompts] || basePrompts[detailLevel as keyof typeof basePrompts] || basePrompts.medium;
-      
-      // Add question context if provided
-      if (question) {
-        prompt = `Answer this question about the image: "${question}"\n\nAlso provide this context: ${prompt}`;
-      }
+      let prompt = question 
+        ? `Answer this question about the image: "${question}"\n\nAlso provide: ${comprehensivePrompt}`
+        : comprehensivePrompt;
       
       if (language !== 'en') {
         const languageNames = {
-          es: 'Spanish',
-          fr: 'French',
-          de: 'German',
-          it: 'Italian',
-          pt: 'Portuguese',
-          zh: 'Chinese',
-          ja: 'Japanese',
-          ko: 'Korean',
-          ar: 'Arabic',
-          hi: 'Hindi'
+          es: 'Spanish', fr: 'French', de: 'German', zh: 'Chinese', ja: 'Japanese',
+          ar: 'Arabic', hi: 'Hindi', bn: 'Bengali', te: 'Telugu', mr: 'Marathi',
+          ta: 'Tamil', gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam', pa: 'Punjabi',
+          or: 'Odia', ur: 'Urdu'
         };
         
         const languageName = languageNames[language as keyof typeof languageNames] || language;
@@ -85,7 +81,7 @@ serve(async (req) => {
       return prompt;
     };
 
-    const prompt = generatePrompt(detailLevel, language, mode || 'surroundings', question);
+    const prompt = generatePrompt(detailLevel, language, question);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -98,21 +94,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: mode === 'reading' 
-              ? 'You are an AI assistant helping visually impaired users read text and documents. Extract ALL visible text accurately, maintain structure, identify document types, and read tables row by row. For forms, identify fields and labels. Detect QR/barcodes. If no text, describe visual content.'
-              : mode === 'navigation'
-              ? 'You are an AI navigation assistant for visually impaired users. Provide clear path status, obstacle locations with distances, ground surface details, doorways, hazards, and directional guidance using clear terms (2 steps ahead, on your left). Warn about low-hanging objects, stairs, ramps.'
-              : mode === 'currency'
-              ? 'You are an AI assistant specialized in currency identification for visually impaired users. Identify bills and coins with denominations, countries, authenticity features, and condition. Be precise about values to prevent errors in financial transactions.'
-              : mode === 'medication'
-              ? 'You are an AI assistant specialized in medication identification for visually impaired users. Read all medication labels accurately including drug names, dosages, expiration dates, and warnings. Safety is critical - always highlight expiration status and warnings prominently.'
-              : mode === 'product'
-              ? 'You are an AI assistant specialized in product identification for visually impaired users. Identify products by brand, name, type, variants, and detect barcodes/QR codes. For food items, prioritize allergen information and expiration dates.'
-              : mode === 'color'
-              ? 'You are an AI assistant specialized in color analysis for visually impaired users. Provide accurate color identification with RGB values, describe color relationships, patterns, and contrast levels. Use precise color names and technical details.'
-              : mode === 'comparison'
-              ? 'You are an AI assistant specialized in scene comparison for visually impaired users. Analyze differences and similarities between states or viewpoints. Describe changes clearly using before/after language. Focus on what moved, appeared, or disappeared.'
-              : 'You are an AI assistant helping visually impaired users understand their surroundings. Describe objects with approximate distances (e.g., "chair 1 meter ahead"), count people and their positions (no identification), spatial layout, dominant colors, visible text, hazards, and overall scene context.'
+            content: 'You are a comprehensive AI visual assistant for visually impaired users. Analyze images holistically covering: scene understanding, text/document reading, navigation guidance, safety warnings, and specialized identification (currency, medications, products, colors). Provide clear, structured information with distances, directions, and actionable details. Prioritize safety and accuracy.'
           },
           {
             role: 'user',
