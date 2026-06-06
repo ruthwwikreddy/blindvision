@@ -1,14 +1,60 @@
+# Blind Vision — allow search engines and AI crawlers
+User-agent: *
+Allow: /
+
+# Google
 User-agent: Googlebot
 Allow: /
 
+User-agent: Google-Extended
+Allow: /
+
+# Bing / Microsoft Copilot
 User-agent: Bingbot
 Allow: /
 
-User-agent: Twitterbot
+# OpenAI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic / Claude
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Meta
+User-agent: FacebookBot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+# Twitter / X
+User-agent: Twitterbot
 Allow: /
+
+# Apple
+User-agent: Applebot
+Allow: /
+
+# Common crawlers
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+Sitemap: https://blindvision.app/sitemap.xml
+LLMs-Txt: https://blindvision.app/llms.txt

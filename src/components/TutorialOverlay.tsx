@@ -18,46 +18,34 @@ interface TutorialOverlayProps {
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Welcome to Blind Vision',
-    description: 'This app helps you understand your surroundings using AI-powered image analysis.',
-    gesture: 'Tap anywhere to continue',
-    audioText: 'Welcome to Blind Vision. This app helps you understand your surroundings using AI-powered image analysis. Tap anywhere to continue.'
+    description: 'This app describes your surroundings using AI-powered camera analysis and voice feedback.',
+    gesture: 'Tap Next to continue',
+    audioText: 'Welcome to Blind Vision. This app describes your surroundings using AI camera analysis and voice feedback.',
   },
   {
-    title: 'Main Button - Capture & Analyze',
-    description: 'The large center button captures images and describes what it sees.',
-    gesture: 'Single tap: Capture and analyze\nLong press (1s): Start voice assistant',
-    audioText: 'The main button is in the center. Single tap to capture and analyze. Long press for one second to start the voice assistant.'
-  },
-  {
-    title: 'Mode Switching',
-    description: 'Switch between Surroundings, Reading, and Navigation modes.',
-    gesture: 'Swipe left or right on main button to cycle modes',
-    audioText: 'Swipe left or right on the main button to switch between Surroundings mode, Reading mode, and Navigation mode.'
+    title: 'Capture & Analyze',
+    description: 'The large white button captures what your camera sees and reads the description aloud.',
+    gesture: 'Single tap: Capture and analyze\nLong press: Voice assistant',
+    audioText: 'Tap the large white button to capture and analyze. Long press for one second to start the voice assistant.',
   },
   {
     title: 'Voice Questions',
-    description: 'Ask specific questions about what you\'re looking at.',
-    gesture: 'Long press main button, then ask your question',
-    audioText: 'Long press the main button to start voice mode. After capturing, ask any question about what you see.'
+    description: 'Ask specific questions about what you are looking at after capturing an image.',
+    gesture: 'Long press capture, then speak your question',
+    audioText: 'Long press the capture button to enter voice mode. After the image is captured, ask any question about what you see.',
   },
   {
     title: 'Settings & Themes',
-    description: 'Access settings to change language, theme, and detail level.',
-    gesture: 'Two-finger tap anywhere for settings',
-    audioText: 'Tap with two fingers anywhere on the screen to open settings. You can change language, theme, and detail level.'
+    description: 'Change language, detail level, theme, and API key from the settings menu.',
+    gesture: 'Tap the gear icon in the top right',
+    audioText: 'Open settings using the gear icon in the top right corner. You can change language, detail level, theme, and your API key.',
   },
   {
-    title: 'History & Replay',
-    description: 'Your recent analyses are saved and can be replayed.',
-    gesture: 'Swipe down to view history',
-    audioText: 'Swipe down to view your analysis history. You can replay previous descriptions anytime.'
+    title: 'History & Emergency',
+    description: 'Replay past analyses from history. Use the SOS button or Emergency panel for help nearby.',
+    gesture: 'Scroll down for history · Tap SOS for emergency',
+    audioText: 'Scroll down to view analysis history and replay descriptions. Use the S O S button in the header or the emergency panel to find help nearby.',
   },
-  {
-    title: 'Emergency SOS',
-    description: 'Quick access to emergency contacts.',
-    gesture: 'Triple tap anywhere for emergency panel',
-    audioText: 'Triple tap anywhere on the screen to access the emergency S O S panel and contact help quickly.'
-  }
 ];
 
 export const TutorialOverlay = ({ onComplete, speakText }: TutorialOverlayProps) => {
@@ -65,32 +53,24 @@ export const TutorialOverlay = ({ onComplete, speakText }: TutorialOverlayProps)
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // Speak the tutorial step when it changes
-    if (isVisible) {
-      speakText(TUTORIAL_STEPS[currentStep].audioText);
-    }
+    if (isVisible) speakText(TUTORIAL_STEPS[currentStep].audioText);
   }, [currentStep, isVisible, speakText]);
-
-  const handleNext = useCallback(() => {
-    if (currentStep < TUTORIAL_STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      handleComplete();
-    }
-  }, [currentStep]);
-
-  const handlePrevious = useCallback(() => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  }, [currentStep]);
 
   const handleComplete = useCallback(() => {
     setIsVisible(false);
     localStorage.setItem('tutorial-completed', 'true');
-    speakText('Tutorial complete. You\'re ready to start using Blind Vision!');
+    speakText("Tutorial complete. You're ready to use Blind Vision.");
     setTimeout(onComplete, 500);
   }, [onComplete, speakText]);
+
+  const handleNext = useCallback(() => {
+    if (currentStep < TUTORIAL_STEPS.length - 1) setCurrentStep((prev) => prev + 1);
+    else handleComplete();
+  }, [currentStep, handleComplete]);
+
+  const handlePrevious = useCallback(() => {
+    if (currentStep > 0) setCurrentStep((prev) => prev - 1);
+  }, [currentStep]);
 
   const handleSkip = useCallback(() => {
     speakText('Tutorial skipped.');
@@ -100,98 +80,61 @@ export const TutorialOverlay = ({ onComplete, speakText }: TutorialOverlayProps)
   if (!isVisible) return null;
 
   const step = TUTORIAL_STEPS[currentStep];
-  const progress = ((currentStep + 1) / TUTORIAL_STEPS.length) * 100;
+  const stepNumber = currentStep + 1;
+  const totalSteps = TUTORIAL_STEPS.length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg flex items-center justify-center p-4 animate-fade-in">
-      <Card className="w-full max-w-2xl glass border-2 border-primary/30 shadow-neon">
-        <CardHeader className="relative">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Lightbulb className="w-8 h-8 text-primary animate-pulse-glow" />
-              <CardTitle className="text-2xl font-bold">Tutorial</CardTitle>
+    <div
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tutorial-title"
+    >
+      <Card className="w-full max-w-md bv-surface-strong shadow-none border-foreground/25">
+        <CardHeader className="relative pb-3">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-6 h-6" />
+              <CardTitle id="tutorial-title" className="text-lg font-bold">Quick Tour</CardTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSkip}
-              className="hover:bg-destructive/20"
-              aria-label="Skip tutorial"
-            >
-              <X className="w-6 h-6" />
+            <Button variant="outline" size="icon" onClick={handleSkip} className="rounded-full h-9 w-9 min-h-0 min-w-0" aria-label="Skip tutorial">
+              <X className="w-4 h-4" />
             </Button>
           </div>
-          
-          {/* Progress bar */}
-          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-primary transition-all duration-500"
-              style={{ width: `${progress}%` }}
-              role="progressbar"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
+
+          <div
+            className="w-full h-1.5 bg-foreground/10 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-label="Tutorial progress"
+            aria-valuenow={stepNumber}
+            aria-valuemin={1}
+            aria-valuemax={totalSteps}
+          >
+            <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${(stepNumber / totalSteps) * 100}%` }} />
           </div>
-          
-          <p className="text-sm text-muted-foreground mt-2">
-            Step {currentStep + 1} of {TUTORIAL_STEPS.length}
-          </p>
+          <p className="text-xs text-muted-foreground mt-2">Step {stepNumber} of {totalSteps}</p>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="text-3xl font-bold text-primary animate-fade-in">
-              {step.title}
-            </h3>
-            
-            <p className="text-xl text-foreground leading-relaxed animate-fade-in">
-              {step.description}
-            </p>
-            
-            <Card className="bg-accent/10 border-accent/30 animate-scale-in">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground uppercase font-semibold mb-2">
-                  Gesture
-                </p>
-                <p className="text-lg font-mono text-accent-foreground whitespace-pre-line">
-                  {step.gesture}
-                </p>
-              </CardContent>
-            </Card>
+        <CardContent className="space-y-5">
+          <div className="space-y-3">
+            <h2 className="text-xl font-bold text-foreground">{step.title}</h2>
+            <p className="text-base text-muted-foreground leading-relaxed">{step.description}</p>
+            <div className="rounded-xl border border-foreground/15 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">How to</p>
+              <p className="text-sm font-medium whitespace-pre-line">{step.gesture}</p>
+            </div>
           </div>
 
-          {/* Navigation buttons */}
-          <div className="flex gap-4 pt-4">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-              className="flex-1 gap-2"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Previous
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" size="lg" onClick={handlePrevious} disabled={currentStep === 0} className="flex-1 rounded-xl gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back
             </Button>
-            
-            <Button
-              size="lg"
-              onClick={handleNext}
-              className="flex-1 gap-2 bg-gradient-primary hover:shadow-glow"
-            >
-              {currentStep === TUTORIAL_STEPS.length - 1 ? 'Get Started' : 'Next'}
-              <ArrowRight className="w-5 h-5" />
+            <Button size="lg" onClick={handleNext} className="flex-1 bv-btn-white rounded-xl gap-2">
+              {currentStep === totalSteps - 1 ? 'Start' : 'Next'}
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSkip}
-            className="w-full text-muted-foreground hover:text-foreground"
-          >
-            Skip Tutorial
-          </Button>
         </CardContent>
       </Card>
     </div>

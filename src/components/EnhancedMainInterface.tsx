@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Camera, Loader2, Volume2, Settings, Copy, Info, Brain, BookOpen, Navigation, Mic, MicOff, Palette, AlertTriangle } from 'lucide-react';
+import { Eye, Loader2, Volume2, Settings, Copy, Info, Brain, Mic, MicOff, Palette, AlertTriangle, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import * as aiService from '@/services/aiService';
 import type { AppMode } from './ModeSelector';
 import { AnalysisHistory, type AnalysisEntry } from './AnalysisHistory';
 import { EmergencyPanel } from './EmergencyPanel';
@@ -50,10 +50,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   const { themeMode, cycleTheme, themeName } = useThemeMode();
   const { addToCache, cache } = useOfflineCache();
   const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceRecorder();
-  
-  // Emergency tap detection
-  const tapCountRef = useRef(0);
-  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoading = isCapturing || isProcessing || isTranscribing;
   
   // Audio management refs
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -93,20 +90,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       
       // Try OpenAI TTS first (more reliable)
       console.log('Attempting OpenAI TTS...');
-      const { data, error } = await supabase.functions.invoke('openai-tts', {
-        body: {
-          text,
-          language,
-          voice: 'alloy'
-        }
-      });
+      const data = await aiService.openAiTts(text, language);
 
-      if (error) {
-        console.log('OpenAI TTS failed, falling back to browser speech:', error);
-        throw new Error('OpenAI TTS unavailable');
-      }
-
-      if (data && data.audioContent) {
+      if (data?.audioContent) {
         console.log('Playing OpenAI TTS audio');
         // Create audio from base64
         const audioBlob = new Blob(
@@ -276,21 +262,13 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       const compressedImage = await compressImage(processedImage, 0.85);
       
       // Use OpenAI for comprehensive unified analysis
-      const { data, error } = await supabase.functions.invoke('analyze-image', {
-        body: {
-          imageDataUrl: compressedImage,
-          language,
-          detailLevel,
-          isQuickMode,
-          question
-        }
+      const analysisData = await aiService.analyzeImage({
+        imageDataUrl: compressedImage,
+        language,
+        detailLevel,
+        isQuickMode,
+        question,
       });
-      
-      if (error) {
-        throw new Error(error.message || 'Analysis failed');
-      }
-      
-      const analysisData = data;
 
       if (!analysisData || !analysisData.description) {
         throw new Error('No description received from analysis');
@@ -529,26 +507,24 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
   }, [capturedImageForVoice, stopRecording, analyzeImage, toast]);
 
 
-  // Enhanced gesture system for main button
-  const mainButtonGestures = useEnhancedGestures({
-    onTap: () => {
-      if (!isLoading) {
-        if (isVoiceMode && isRecording) {
-          stopVoiceAssistant();
-        } else if (isVoiceMode) {
-          setIsVoiceMode(false);
-          setCapturedImageForVoice(null);
-        } else {
-          captureImage();
-        }
-      }
-    },
+  // Long-press on capture button (voice mode)
+  const longPressFiredRef = useRef(false);
+
+  const handleCaptureAction = useCallback(() => {
+    if (isLoading) return;
+    if (isVoiceMode && isRecording) stopVoiceAssistant();
+    else if (isVoiceMode) { setIsVoiceMode(false); setCapturedImageForVoice(null); }
+    else captureImage();
+  }, [isLoading, isVoiceMode, isRecording, stopVoiceAssistant, captureImage]);
+
+  const mainButtonLongPress = useEnhancedGestures({
     onLongPress: () => {
       if (!isLoading && !isVoiceMode) {
+        longPressFiredRef.current = true;
         triggerHaptic('longPress');
         startVoiceAssistant();
       }
-    }
+    },
   });
 
   // Global gesture system
@@ -564,25 +540,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   });
 
-  // Emergency tap detection (triple tap)
-  const handleEmergencyTap = useCallback(() => {
-    tapCountRef.current += 1;
-    
-    if (tapTimerRef.current) {
-      clearTimeout(tapTimerRef.current);
-    }
-    
-    tapTimerRef.current = setTimeout(() => {
-      tapCountRef.current = 0;
-    }, 500);
-    
-    if (tapCountRef.current === 3) {
-      tapCountRef.current = 0;
-      triggerHaptic('warning');
-      setShowEmergencySOS(true);
-      speakText('Emergency S O S activated');
-    }
-  }, [triggerHaptic, speakText]);
+  // Emergency tap detection removed from root — use dedicated SOS button in header
 
   const copyToClipboard = useCallback(async () => {
     if (!lastDescription) return;
@@ -619,17 +577,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
       // Extract key objects/items from the description for context query
       const query = lastDescription.split('.')[0] || lastDescription;
       
-      const { data, error } = await supabase.functions.invoke('contextual-info', {
-        body: {
-          query,
-          language
-        }
-      });
-
-      if (error) {
-        console.error('Contextual info error:', error);
-        throw new Error(error.message || 'Failed to get contextual information');
-      }
+      const data = await aiService.getContextualInfo(query, language);
 
       if (!data || !data.contextualInfo) {
         throw new Error('No contextual information received');
@@ -658,8 +606,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
     }
   }, [lastDescription, language, speakText, toast]);
 
-  const isLoading = isCapturing || isProcessing || isTranscribing;
-
   // Initialize audio, check tutorial, and welcome message
   useEffect(() => {
     // Check if tutorial has been completed
@@ -682,7 +628,7 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         // Wait a moment, then give welcome message
         setTimeout(() => {
           const welcomeMessage = language === 'en' 
-            ? "Welcome to Blind Vision. Your comprehensive AI accessibility assistant is ready. Choose your mode and start exploring."
+            ? "Welcome to Blind Vision. Tap the white capture button to analyze your surroundings. Press H for keyboard shortcuts."
             : language === 'hi'
             ? "ब्लाइंड विजन में आपका स्वागत है। आपका व्यापक एआई सुगम्यता सहायक तैयार है। अपना मोड चुनें और अन्वेषण शुरू करें।"
             : "బ్లైండ్ విజన్‌కు స్వాగతం. మీ సమగ్ర AI ప్రాప్యత సహాయకుడు సిద్ధంగా ఉన్నాడు. మీ మోడ్ ఎంచుకోండి మరియు అన్వేషణ ప్రారంభించండి.";
@@ -759,6 +705,10 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           event.preventDefault();
           onQuickModeToggle();
           break;
+        case 'v':
+          event.preventDefault();
+          if (!isLoading && !isVoiceMode) startVoiceAssistant();
+          break;
         case 'h':
           event.preventDefault();
           speakText("Keyboard shortcuts: Spacebar or Enter to take picture, V for voice assistant, R to replay description, C to copy, I for more info, S for settings, Q for quick mode, T for theme, H for help.");
@@ -808,11 +758,9 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
 
   return (
     <div 
-      className="min-h-screen bg-background text-foreground relative overflow-hidden safe-area-top safe-area-bottom"
-      onClick={handleEmergencyTap}
+      className="min-h-screen bg-background text-foreground relative overflow-x-hidden safe-area-top safe-area-bottom"
       {...globalGestures}
     >
-      {/* Tutorial Overlay */}
       {showTutorial && (
         <TutorialOverlay 
           onComplete={() => setShowTutorial(false)}
@@ -820,7 +768,6 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
         />
       )}
 
-      {/* Emergency SOS */}
       {showEmergencySOS && (
         <EmergencySOS
           onClose={() => {
@@ -831,236 +778,210 @@ export const EnhancedMainInterface = ({ language, detailLevel, isQuickMode, onSe
           currentLocation={currentLocation}
         />
       )}
-      {/* Enhanced Background with Mesh Gradient */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-mesh-gradient opacity-30" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-primary/3 rounded-full blur-2xl animate-breathe" />
-      </div>
-      
-      {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-3 md:p-4 space-y-4 md:space-y-6 animate-fade-in-up">
-        
-        {/* Enhanced Main Action Area */}
-        <div className="flex flex-col items-center space-y-6">
-          
-          {/* Enhanced Control Buttons */}
-          <div className="absolute top-6 right-6 flex gap-2">
+
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 pt-5 pb-2 max-w-md mx-auto w-full">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Blind Vision</h1>
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              AI visual assistant
+              {isQuickMode && (
+                <span className="inline-flex items-center gap-1 bv-pill py-0.5 px-2 text-[10px]">
+                  <Zap className="w-3 h-3" aria-hidden="true" />
+                  Quick
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex gap-2">
             <Button
               onClick={() => {
-                const newTheme = cycleTheme();
+                triggerHaptic('warning');
+                setShowEmergencySOS(true);
+                speakText('Emergency panel opened');
+              }}
+              variant="outline"
+              size="sm"
+              className="rounded-full h-10 min-h-0 px-3 border-foreground/40 font-semibold text-xs tracking-wide"
+              aria-label="Open emergency SOS panel"
+            >
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              SOS
+            </Button>
+            <Button
+              onClick={() => {
+                cycleTheme();
                 triggerHaptic('selection');
-                toast({
-                  title: 'Theme Changed',
-                  description: `Now using ${themeName}`
-                });
+                toast({ title: 'Theme Changed', description: `Now using ${themeName}` });
               }}
               variant="outline"
               size="icon"
-              className="glass border-2 border-border/50 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-primary/50 hover:bg-primary/5 critical-button"
-              title={`Current theme: ${themeName}. Click to cycle themes`}
+              className="rounded-full h-10 w-10 min-h-0 min-w-0 border-foreground/30"
               aria-label={`Change theme. Current: ${themeName}`}
             >
-              <Palette className="w-5 h-5" />
+              <Palette className="w-4 h-4" />
             </Button>
             <Button
               onClick={onSettingsClick}
               variant="outline"
               size="icon"
-              className="glass border-2 border-border/50 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-primary/50 hover:bg-primary/5 critical-button"
-              title="Open Settings"
-              aria-label="Open settings menu"
+              className="rounded-full h-10 w-10 min-h-0 min-w-0 border-foreground/30"
+              aria-label="Open settings"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
             </Button>
           </div>
+        </header>
 
-          {/* Enhanced Capture Button */}
-          <div className="flex flex-col items-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
-            <div className="relative">
-              {/* Main Capture Button - 80x80 minimum for accessibility */}
-              <Button
-                {...mainButtonGestures}
-                disabled={isLoading && !isRecording}
-                className={`
-                  relative w-48 h-48 md:w-56 md:h-56 rounded-full critical-button
-                  glass border-4 backdrop-blur-md transition-all duration-300 hover:scale-105 
-                  bg-gradient-to-br to-transparent
-                  shadow-elevated hover:shadow-2xl group overflow-hidden
-                  ${isVoiceMode ? 'border-accent/50 from-accent/20 via-accent/10' : 'border-primary/30 from-primary/20 via-primary/10'}
-                  ${isLoading ? 'animate-pulse' : 'hover:shadow-primary/25 active:scale-95'}
-                  ${isRecording ? 'animate-neon-pulse border-red-500/50' : ''}
-                  ${isSpeaking ? 'animate-pulse-glow' : ''}
-                `}
-                title={isVoiceMode && isRecording ? "Stop recording and process question" : isVoiceMode ? "Cancel voice assistant" : "Comprehensive AI analysis. Long press for voice questions."}
-                aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : `${isLoading ? 'Processing...' : 'Main action button. Tap to capture, long press for voice.'}`}
-              >
-                {/* Background shimmer effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                
-                {/* Icon */}
-                <div className="relative z-10">
-                  {isLoading ? (
-                    <Loader2 className={`w-16 h-16 md:w-20 md:h-20 ${isVoiceMode ? 'text-accent-foreground' : 'text-primary-foreground'} animate-spin`} />
-                  ) : isVoiceMode && isRecording ? (
-                    <MicOff className="w-16 h-16 md:w-20 md:h-20 text-red-500 transition-transform group-hover:scale-110 animate-pulse" />
-                  ) : isVoiceMode ? (
-                    <Mic className="w-16 h-16 md:w-20 md:h-20 text-accent-foreground transition-transform group-hover:scale-110" />
-                  ) : (
-                    <Eye className="w-16 h-16 md:w-20 md:h-20 text-primary-foreground transition-transform group-hover:scale-110" />
-                  )}
-                </div>
-              </Button>
-            </div>
-            
-            {/* Mode indicator */}
-            <div className={`mt-4 px-4 py-2 glass rounded-full border ${isVoiceMode ? 'border-accent/20' : 'border-primary/20'}`}>
-              <p className={`text-sm font-medium capitalize ${isVoiceMode ? 'text-accent' : 'text-primary'}`}>
-                {isVoiceMode ? (isRecording ? 'Recording...' : isTranscribing ? 'Processing...' : 'Voice Ready') : 'Comprehensive Analysis'}
-              </p>
-            </div>
-          </div>
-
-        {/* Voice Assistant Button */}
-        {!isVoiceMode && (
-          <div className="flex justify-center">
-            <Button
-              onClick={startVoiceAssistant}
-              disabled={isLoading}
-              variant="outline"
-              size="lg"
-              className="border-accent/30 bg-accent/10 hover:bg-accent/20 text-accent hover:text-accent flex items-center gap-2"
-              aria-label="Start voice assistant - capture image and ask questions"
+        {/* Scrollable body */}
+        <main className="flex-1 flex flex-col items-center px-4 pb-8 pt-4 space-y-5 max-w-md mx-auto w-full animate-fade-in-up">
+          
+          {/* Capture zone */}
+          <section className="flex flex-col items-center w-full">
+            <button
+              {...mainButtonLongPress}
+              onClick={() => {
+                if (longPressFiredRef.current) {
+                  longPressFiredRef.current = false;
+                  return;
+                }
+                handleCaptureAction();
+              }}
+              disabled={isLoading && !isRecording}
+              className={`
+                bv-capture-btn critical-button flex items-center justify-center
+                disabled:opacity-60 disabled:cursor-not-allowed
+                ${isVoiceMode ? 'bv-capture-btn--voice' : ''}
+                ${isRecording ? 'bv-capture-btn--recording' : ''}
+                ${isLoading ? 'animate-pulse' : ''}
+              `}
+              title={isVoiceMode && isRecording ? "Stop recording" : isVoiceMode ? "Cancel voice mode" : "Tap to capture and analyze"}
+              aria-label={isVoiceMode && isRecording ? 'Stop recording' : isVoiceMode ? 'Cancel voice mode' : isLoading ? 'Processing' : 'Capture and analyze scene'}
             >
-              <Mic className="w-5 h-5" />
-              Voice Assistant
-            </Button>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {lastDescription && !isVoiceMode && (
-          <div className="flex flex-wrap gap-3 justify-center max-w-sm">
-            <Button
-              onClick={replayDescription}
-              disabled={isSpeaking}
-              variant="outline"
-              size="sm"
-              className="border-border hover:bg-muted flex items-center gap-2"
-              aria-label="Replay the last description"
-            >
-              <Volume2 className="w-4 h-4" />
-              Replay
-            </Button>
-            
-            <Button
-              onClick={copyToClipboard}
-              variant="outline"
-              size="sm"
-              className="border-border hover:bg-muted flex items-center gap-2"
-              aria-label="Copy description to clipboard"
-            >
-              <Copy className="w-4 h-4" />
-              Copy
-            </Button>
-            
-            <Button
-              onClick={getContextualInfo}
-              disabled={isGettingContext}
-              variant="outline"
-              size="sm"
-              className="border-border hover:bg-muted flex items-center gap-2"
-              aria-label="Get additional context about the scene"
-            >
-              {isGettingContext ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+              {isLoading ? (
+                <Loader2 className="w-14 h-14 animate-spin" />
+              ) : isVoiceMode && isRecording ? (
+                <MicOff className="w-14 h-14" />
+              ) : isVoiceMode ? (
+                <Mic className="w-14 h-14" />
               ) : (
-                <Info className="w-4 h-4" />
+                <Eye className="w-14 h-14" strokeWidth={1.5} />
               )}
-              More Info
-            </Button>
-          </div>
-        )}
+            </button>
 
-        {/* Current Mode Description */}
-        <div className="text-center text-sm text-muted-foreground max-w-sm">
-          <p>
-            {isVoiceMode 
-              ? (isRecording 
-                  ? "Speak your question about the captured image. Tap the button when finished."
-                  : isTranscribing
-                    ? "Processing your voice question..."
-                    : "Image captured. Starting voice recording...")
-              : "Get comprehensive AI analysis of your surroundings, including text, navigation, objects, and more."
-            }
-          </p>
-        </div>
+            <div className="bv-pill mt-5" role="status" aria-live="polite" aria-atomic="true">
+              {isVoiceMode
+                ? isRecording ? 'Recording…' : isTranscribing ? 'Processing…' : 'Voice Ready'
+                : isProcessing ? 'Analyzing…' : isCapturing ? 'Capturing…' : 'Tap to Analyze'}
+            </div>
 
-        </div>
+            <p className="text-center text-sm text-muted-foreground max-w-xs mt-3 leading-relaxed">
+              {isVoiceMode 
+                ? (isRecording 
+                    ? "Speak your question, then tap again when done."
+                    : isTranscribing
+                      ? "Processing your voice question…"
+                      : "Image captured. Recording your question…")
+                : "Point your camera and tap to get a full scene description — text, objects, navigation, and safety."
+              }
+            </p>
+          </section>
 
-        {/* Analysis History */}
-        <div data-history>
+          {/* Quick actions row */}
+          {!isVoiceMode && (
+            <section className="flex flex-wrap gap-2 justify-center w-full">
+              <Button
+                onClick={startVoiceAssistant}
+                disabled={isLoading}
+                className="bv-btn-white rounded-full px-5 min-h-[44px] h-11"
+              >
+                <Mic className="w-4 h-4" />
+                Voice Assistant
+              </Button>
+
+              {lastDescription && (
+                <>
+                  <Button
+                    onClick={replayDescription}
+                    disabled={isSpeaking}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full min-h-[44px] h-11 px-4"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    Replay
+                  </Button>
+                  <Button
+                    onClick={copyToClipboard}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full min-h-[44px] h-11 px-4"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </Button>
+                  <Button
+                    onClick={getContextualInfo}
+                    disabled={isGettingContext}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full min-h-[44px] h-11 px-4"
+                  >
+                    {isGettingContext ? <Loader2 className="w-4 h-4 animate-spin" /> : <Info className="w-4 h-4" />}
+                    More Info
+                  </Button>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* Latest result */}
+          {lastDescription && (
+            <Card className="bv-surface-strong w-full shadow-none animate-fade-in">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Brain className="w-4 h-4" />
+                  Latest Analysis
+                  {isSpeaking && (
+                    <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground ml-auto">
+                      <Volume2 className="w-3.5 h-3.5 animate-pulse" />
+                      Speaking
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <p className="text-sm text-foreground/90 leading-relaxed selectable analysis-text">{lastDescription}</p>
+                {contextualInfo && (
+                  <div className="mt-3 pt-3 border-t border-foreground/10">
+                    <p className="text-xs font-medium text-foreground mb-1">Additional context</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{contextualInfo}</p>
+                  </div>
+                )}
+                {lastAnalysis && (
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {new Date(lastAnalysis.timestamp).toLocaleTimeString()} · {lastAnalysis.language.toUpperCase()}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <AnalysisHistory
             history={analysisHistory}
             onReplay={(description) => speakText(description, true)}
             onClear={() => setAnalysisHistory([])}
             speakText={speakText}
           />
-        </div>
 
-        {/* Emergency Panel */}
-        <EmergencyPanel
-          speakText={speakText}
-          currentLocation={currentLocation}
-        />
-
+          <EmergencyPanel
+            speakText={speakText}
+            currentLocation={currentLocation}
+          />
+        </main>
       </div>
 
-      {/* Status Display */}
-      {lastDescription && (
-        <Card className="absolute bottom-4 left-4 right-4 max-w-md mx-auto border-border shadow-soft">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary" />
-              Latest Analysis
-              {isSpeaking && (
-                <div className="flex items-center gap-1 text-accent">
-                  <Volume2 className="w-4 h-4 animate-pulse" />
-                  <span className="text-xs">Speaking...</span>
-                </div>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-sm text-muted-foreground mb-3">
-              {lastDescription}
-            </p>
-            
-            {contextualInfo && (
-              <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-medium text-accent">Additional Context</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {contextualInfo}
-                </p>
-              </div>
-            )}
-            
-            {lastAnalysis && (
-              <div className="text-xs text-muted-foreground/60 mt-2">
-                {new Date(lastAnalysis.timestamp).toLocaleTimeString()} • 
-                {lastAnalysis.language.toUpperCase()} • 
-                {lastAnalysis.source?.toUpperCase()}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Hidden video and canvas elements for camera */}
       <video ref={videoRef} style={{ display: 'none' }} playsInline muted />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>

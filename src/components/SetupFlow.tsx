@@ -7,6 +7,7 @@ import { Eye, Volume2, Settings, Check } from 'lucide-react';
 
 interface SetupFlowProps {
   onComplete: (language: string, detailLevel: string) => void;
+  onBack?: () => void;
   isSettings?: boolean;
   currentLanguage?: string;
   currentDetailLevel?: string;
@@ -42,6 +43,7 @@ const DETAIL_LEVELS = [
 
 export const SetupFlow = ({ 
   onComplete, 
+  onBack,
   isSettings = false, 
   currentLanguage = 'en', 
   currentDetailLevel = 'medium', 
@@ -132,15 +134,28 @@ export const SetupFlow = ({
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-top safe-area-bottom">
       <div className="w-full max-w-md animate-fade-in">
+        {isSettings && onBack && (
+          <div className="mb-4">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-2"
+              aria-label="Back to settings"
+            >
+              ← Back to Settings
+            </Button>
+          </div>
+        )}
         {/* App Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-primary rounded-full mb-4 shadow-glow">
-            <Eye className="w-10 h-10 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary mb-4 shadow-glow">
+            <Eye className="w-10 h-10 text-primary-foreground" strokeWidth={1.5} />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Blind Vision</h1>
-          <p className="text-muted-foreground">Your intelligent visual assistant</p>
+          <h1 className="text-3xl font-bold text-foreground mb-1 tracking-tight">Blind Vision</h1>
+          <p className="text-muted-foreground text-sm">Your intelligent visual assistant</p>
         </div>
 
         {/* Progress Indicator */}
@@ -151,7 +166,7 @@ export const SetupFlow = ({
           </div>
         </div>
 
-        <Card className="border-border shadow-soft">
+        <Card className="bv-surface shadow-none">
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2 text-xl" role="heading" aria-level={2}>
               {step === 1 ? (
@@ -234,7 +249,7 @@ export const SetupFlow = ({
 
             <Button 
               onClick={handleNext}
-              className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300 text-lg py-6"
+              className="w-full bv-btn-white rounded-xl text-lg py-6 h-auto"
               size="lg"
               aria-label={step === 1 ? "Continue to step 2" : "Complete setup and start using Blind Vision"}
             >
@@ -251,7 +266,7 @@ export const SetupFlow = ({
         </Card>
 
         <div className="text-center mt-6 text-sm text-muted-foreground" aria-live="polite">
-          Step {step} of 2 - Setting up your experience
+          {isSettings ? 'Update your preferences' : `Step ${step} of 2 — Setting up your experience`}
         </div>
         
         <div className="text-center mt-4 text-xs text-muted-foreground">

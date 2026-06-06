@@ -69,7 +69,7 @@ export const FloatingIconSettings = ({ onBackClick, speakText }: FloatingIconSet
     setPreviewStyle({
       opacity,
       borderRadius,
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #ffffff 0%, #cccccc 100%)',
       transform: settings.style === 'star' ? 'rotate(0deg)' : 'none',
       clipPath: settings.style === 'star' 
         ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'

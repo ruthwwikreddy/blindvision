@@ -10,135 +10,114 @@ interface EmergencySOSProps {
   currentLocation?: { lat: number; lng: number; address?: string };
 }
 
+function getEmergencyNumber(): string {
+  const locale = navigator.language?.toLowerCase() ?? '';
+  if (locale.startsWith('en-us') || locale.startsWith('en-ca')) return '911';
+  if (locale.startsWith('en-gb')) return '999';
+  if (locale.startsWith('en-au')) return '000';
+  if (locale.startsWith('en-in') || locale.startsWith('hi')) return '112';
+  return '112';
+}
+
 export const EmergencySOS = ({ onClose, speakText, currentLocation }: EmergencySOSProps) => {
   const [isCalling, setIsCalling] = useState(false);
   const { toast } = useToast();
+  const emergencyNumber = getEmergencyNumber();
 
   const handleEmergencyCall = useCallback(() => {
     setIsCalling(true);
-    speakText('Calling emergency services now');
-    
-    // Open phone dialer with emergency number
-    window.location.href = 'tel:112'; // International emergency number
-    
+    speakText(`Opening phone dialer for emergency number ${emergencyNumber.split('').join(' ')}`);
+    window.location.href = `tel:${emergencyNumber}`;
     setTimeout(() => setIsCalling(false), 2000);
-  }, [speakText]);
+  }, [speakText, emergencyNumber]);
 
-  const handleShareLocation = useCallback(() => {
-    if (currentLocation) {
-      const locationText = `Emergency! My location: https://maps.google.com/?q=${currentLocation.lat},${currentLocation.lng}`;
-      
+  const handleShareLocation = useCallback(async () => {
+    if (!currentLocation) {
+      speakText('Location not available yet. Try again in a moment.');
+      return;
+    }
+
+    const locationText = `Emergency! My location: https://maps.google.com/?q=${currentLocation.lat},${currentLocation.lng}`;
+
+    try {
       if (navigator.share) {
-        navigator.share({
-          title: 'Emergency Location',
-          text: locationText
-        }).catch(console.error);
+        await navigator.share({ title: 'Emergency Location', text: locationText });
       } else {
-        navigator.clipboard.writeText(locationText);
-        toast({
-          title: 'Location Copied',
-          description: 'Emergency location copied to clipboard'
-        });
+        await navigator.clipboard.writeText(locationText);
+        toast({ title: 'Location Copied', description: 'Share the link with someone who can help' });
       }
-      
-      speakText('Location shared');
-    } else {
-      speakText('Location not available');
-      toast({
-        title: 'Location Unavailable',
-        description: 'Unable to get current location',
-        variant: 'destructive'
-      });
+      speakText('Location ready to share');
+    } catch {
+      speakText('Could not share location');
     }
   }, [currentLocation, speakText, toast]);
 
   const handleCallEmergencyContact = useCallback(() => {
     const emergencyContact = localStorage.getItem('emergency-contact');
     if (emergencyContact) {
-      speakText('Calling emergency contact');
+      speakText('Opening dialer for your emergency contact');
       window.location.href = `tel:${emergencyContact}`;
     } else {
-      speakText('No emergency contact set. Please set one in settings.');
-      toast({
-        title: 'No Emergency Contact',
-        description: 'Please set an emergency contact in settings',
-        variant: 'destructive'
-      });
+      speakText('No emergency contact saved. Add one in your phone contacts and save the number in settings later.');
+      toast({ title: 'No Contact Saved', description: 'Set an emergency contact in your phone for quick access' });
     }
   }, [speakText, toast]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-destructive/20 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in">
-      <Card className="w-full max-w-lg border-4 border-destructive shadow-neon animate-scale-in">
-        <CardHeader className="bg-destructive text-destructive-foreground">
+    <div
+      className="fixed inset-0 z-50 bg-background/90 backdrop-blur-lg flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sos-title"
+    >
+      <Card className="w-full max-w-md bv-surface-strong shadow-none border-foreground/30 animate-scale-in">
+        <CardHeader className="border-b border-foreground/10 pb-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-8 h-8 animate-pulse" />
-              <CardTitle className="text-2xl font-bold">Emergency SOS</CardTitle>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6" />
+              <CardTitle id="sos-title" className="text-lg font-bold">Emergency SOS</CardTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-destructive-foreground hover:bg-destructive-foreground/20"
-              aria-label="Close emergency panel"
-            >
-              <X className="w-6 h-6" />
+            <Button variant="outline" size="icon" onClick={onClose} className="rounded-full h-9 w-9 min-h-0 min-w-0" aria-label="Close emergency panel">
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="p-5 space-y-3">
           <Button
             size="lg"
             onClick={handleEmergencyCall}
             disabled={isCalling}
-            className="w-full h-20 text-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-3"
+            className="w-full h-16 text-base bv-btn-white rounded-xl gap-3"
           >
-            <Phone className="w-8 h-8" />
-            {isCalling ? 'Calling...' : 'Call Emergency (112)'}
+            <Phone className="w-5 h-5" />
+            {isCalling ? 'Opening dialer…' : `Call Emergency (${emergencyNumber})`}
           </Button>
 
-          <Button
-            size="lg"
-            onClick={handleCallEmergencyContact}
-            className="w-full h-16 text-lg gap-3"
-            variant="outline"
-          >
-            <Phone className="w-6 h-6" />
+          <Button size="lg" onClick={handleCallEmergencyContact} variant="outline" className="w-full h-14 rounded-xl gap-3">
+            <Phone className="w-5 h-5" />
             Call Emergency Contact
           </Button>
 
-          {currentLocation && (
-            <Button
-              size="lg"
-              onClick={handleShareLocation}
-              className="w-full h-16 text-lg gap-3"
-              variant="outline"
-            >
-              <Share2 className="w-6 h-6" />
-              Share Location
-            </Button>
-          )}
+          <Button size="lg" onClick={handleShareLocation} variant="outline" className="w-full h-14 rounded-xl gap-3" disabled={!currentLocation}>
+            <Share2 className="w-5 h-5" />
+            Share Location
+          </Button>
 
           {currentLocation && (
-            <Card className="bg-muted/50 border-muted">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-5 h-5 text-primary mt-1" />
-                  <div>
-                    <p className="text-sm font-semibold mb-1">Current Location</p>
-                    <p className="text-xs text-muted-foreground">
-                      {currentLocation.address || `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-foreground/15 text-sm">
+              <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Current location</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {currentLocation.address || `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`}
+                </p>
+              </div>
+            </div>
           )}
 
-          <p className="text-sm text-center text-muted-foreground pt-4">
-            Emergency services will be contacted immediately
+          <p className="text-xs text-center text-muted-foreground pt-2 leading-relaxed">
+            This opens your phone dialer — you must confirm the call. For life-threatening emergencies, use your device&apos;s native emergency features.
           </p>
         </CardContent>
       </Card>

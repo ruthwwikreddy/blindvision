@@ -1,0 +1,66 @@
+# Blind Vision
+
+> AI-powered visual assistance app for blind and visually impaired users. Describes scenes aloud, reads text, guides navigation, and answers voice questions.
+
+## What is Blind Vision?
+
+Blind Vision is a free accessibility web app that uses AI computer vision and voice synthesis to help blind and visually impaired people understand their surroundings. Point your camera, tap once, and hear a spoken description of objects, text, signs, obstacles, and safety hazards.
+
+## Core Features
+
+- **Scene analysis**: Full AI descriptions of environments, objects, and spatial layout
+- **Text & sign reading**: OCR for labels, documents, menus, and street signs
+- **Navigation assistance**: Obstacle detection, directions, stairs, and pathway guidance
+- **Voice assistant**: Ask follow-up questions about a captured image
+- **Quick mode**: Fast object identification for rapid navigation
+- **Multi-language**: English, Hindi, Telugu with spoken responses
+- **Emergency tools**: Find nearby help, share location, SOS dialer
+- **Accessibility themes**: High contrast, yellow-on-black, and screen-reader friendly UI
+- **Offline cache**: Replay recent analyses without network
+- **Bring your own API key**: Use your own OpenAI key on any device
+
+## Who is it for?
+
+- Blind and visually impaired individuals
+- Low vision users needing high-contrast interfaces
+- Caregivers and orientation & mobility specialists
+- Anyone needing hands-free environmental awareness
+
+## How to use
+
+1. Open the app in a modern browser (Chrome, Safari, Edge)
+2. Allow camera and microphone permissions when prompted
+3. Tap the white capture button to analyze your surroundings
+4. Long-press for voice mode to ask questions about what you see
+5. Use Settings to change language, detail level, theme, or API key
+
+## Technical Details
+
+- **Type**: Progressive Web App (PWA), also available as native Android/iOS via Capacitor
+- **AI models**: OpenAI GPT-4o vision, Whisper speech-to-text, OpenAI TTS
+- **Privacy**: API keys stored locally in browser; optional direct OpenAI calls
+- **Local use**: Full features on localhost; published sites require user API key
+
+## FAQ
+
+**Is Blind Vision free?**
+The app is free to use. On localhost, server keys may be provided. On published sites, users add their own OpenAI API key.
+
+**Does it work offline?**
+Recent analyses are cached locally. Camera analysis requires internet for AI processing.
+
+**What languages are supported?**
+English, Hindi, and Telugu for voice output. More languages planned.
+
+**Is it safe for emergencies?**
+Emergency features open your phone dialer and maps — they do not auto-call services. Always use native emergency features for life-threatening situations.
+
+## Links
+
+- Website: https://blindvision.app/
+- Full documentation for AI systems: https://blindvision.app/llms-full.txt
+- Sitemap: https://blindvision.app/sitemap.xml
+
+## Contact
+
+Open source accessibility project. Update VITE_SITE_URL when deploying to your domain.

@@ -420,7 +420,7 @@ class NativeOverlayService implements OverlayService {
       borderRadius,
       clipPath,
       opacity: opacity.toString(),
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #ffffff 0%, #cccccc 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

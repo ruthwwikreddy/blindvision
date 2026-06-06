@@ -2,39 +2,213 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Blind Vision - AI-Powered Accessibility Assistant</title>
-    <meta name="description" content="AI-powered visual assistance with voice guidance, text reading, and smart navigation for visually impaired users" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary SEO -->
+    <title>Blind Vision — AI Visual Assistance for Blind &amp; Visually Impaired Users</title>
+    <meta name="description" content="Free AI app that describes your surroundings aloud, reads text and signs, guides navigation, and answers voice questions. Built for blind and visually impaired users." />
+    <meta name="keywords" content="blind vision app, visual assistance, AI for blind users, visually impaired accessibility, scene description, voice navigation, OCR blind, object recognition accessibility, low vision assistant" />
     <meta name="author" content="Blind Vision" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <link rel="canonical" href="https://blindvision.app/" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="application-name" content="Blind Vision" />
+    <meta name="apple-mobile-web-app-title" content="Blind Vision" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
 
-    <meta property="og:title" content="Blind Vision - AI-Powered Accessibility Assistant" />
-    <meta property="og:description" content="AI-powered visual assistance with voice guidance, text reading, and smart navigation for visually impaired users" />
+    <!-- Open Graph (Facebook, LinkedIn, iMessage) -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:site_name" content="Blind Vision" />
+    <meta property="og:title" content="Blind Vision — AI Visual Assistance for Blind &amp; Visually Impaired Users" />
+    <meta property="og:description" content="Point your camera, tap once, hear your world described aloud. AI scene analysis, text reading, navigation guidance, and voice questions." />
+    <meta property="og:url" content="https://blindvision.app/" />
+    <meta property="og:image" content="https://blindvision.app/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Blind Vision — AI visual assistance app logo and tagline" />
+    <meta property="og:locale" content="en_US" />
 
+    <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    <link rel="manifest" href="/manifest.json">
+    <meta name="twitter:title" content="Blind Vision — AI Visual Assistance for Blind Users" />
+    <meta name="twitter:description" content="AI describes your surroundings aloud. Text reading, navigation, voice questions. Free accessibility app." />
+    <meta name="twitter:image" content="https://blindvision.app/og-image.svg" />
+    <meta name="twitter:image:alt" content="Blind Vision app" />
+
+    <!-- AI / LLM discovery -->
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs.txt — AI crawler summary" />
+    <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full AI reference document" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- JSON-LD: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Blind Vision",
+      "url": "https://blindvision.app/",
+      "description": "AI-powered visual assistance app for blind and visually impaired users",
+      "inLanguage": "en",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://blindvision.app/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD: SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Blind Vision",
+      "applicationCategory": "AccessibilityApplication",
+      "applicationSubCategory": "Assistive Technology",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "AI visual assistance app that describes surroundings aloud, reads text, guides navigation, and supports voice questions for blind and visually impaired users.",
+      "featureList": [
+        "AI scene description",
+        "Text and sign reading (OCR)",
+        "Navigation and obstacle detection",
+        "Voice assistant with image Q&A",
+        "Quick object recognition mode",
+        "Multi-language voice output",
+        "High-contrast accessibility themes",
+        "Emergency location sharing",
+        "Offline analysis cache"
+      ],
+      "screenshot": "https://blindvision.app/og-image.svg",
+      "url": "https://blindvision.app/",
+      "author": {
+        "@type": "Organization",
+        "name": "Blind Vision"
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "audienceType": "Blind and visually impaired users"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Blind Vision",
+      "url": "https://blindvision.app/",
+      "logo": "https://blindvision.app/favicon.svg",
+      "description": "Building AI accessibility tools for blind and visually impaired people worldwide."
+    }
+    </script>
+
+    <!-- JSON-LD: FAQPage (AEO / GEO — +40% AI citation visibility) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Blind Vision?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Blind Vision is a free AI accessibility app that uses your smartphone camera and OpenAI vision models to describe your surroundings aloud. It helps blind and visually impaired users understand objects, read text, navigate safely, and ask voice questions about what they see."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does Blind Vision work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tap the capture button to photograph your environment. AI analyzes the image and speaks a description covering objects, visible text, navigation hazards, and safety warnings. Long-press for voice mode to ask follow-up questions about the captured scene."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Blind Vision free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, Blind Vision is free to use. When running locally on your device, built-in server keys may be available. On published websites, you can add your own OpenAI API key stored securely in your browser."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What languages does Blind Vision support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Blind Vision supports English, Hindi, and Telugu for spoken AI responses. Language and detail level can be changed in Settings."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Blind Vision work offline?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Recent analyses are cached locally for offline replay. Live camera analysis requires an internet connection for AI processing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is Blind Vision designed for?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Blind Vision is designed for blind, visually impaired, and low vision users who need hands-free environmental awareness. It also supports caregivers and orientation specialists with high-contrast, voice-first interaction."
+          }
+        }
+      ]
+    }
+    </script>
+
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/src/sw.ts')
-          .then(registration => {
-            console.log('ServiceWorker registration successful');
-          })
-          .catch(error => {
-            console.log('ServiceWorker registration failed: ', error);
-          });
+        navigator.serviceWorker.register('/src/sw.ts').catch(function () {});
       }
     </script>
   </head>
 
   <body>
+    <!-- Crawler-accessible answer-first content (AEO / LLMEO) -->
+    <noscript>
+      <main style="max-width:720px;margin:2rem auto;padding:1rem;font-family:system-ui,sans-serif;">
+        <h1>Blind Vision — AI Visual Assistance for Blind &amp; Visually Impaired Users</h1>
+        <p><strong>Blind Vision is a free AI accessibility app</strong> that describes your surroundings aloud using your phone camera. It reads text and signs, identifies objects, guides navigation, and answers voice questions.</p>
+        <h2>Key Features</h2>
+        <ul>
+          <li>AI scene description with voice output</li>
+          <li>Text and sign reading (OCR)</li>
+          <li>Navigation and obstacle detection</li>
+          <li>Voice assistant — ask questions about what you see</li>
+          <li>Quick object recognition mode</li>
+          <li>English, Hindi, and Telugu support</li>
+          <li>High-contrast accessibility themes</li>
+          <li>Emergency location sharing</li>
+        </ul>
+        <p>Enable JavaScript to use the full app, or visit <a href="/llms.txt">llms.txt</a> for AI-readable documentation.</p>
+      </main>
+    </noscript>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

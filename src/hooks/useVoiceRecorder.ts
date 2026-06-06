@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import * as aiService from '@/services/aiService';
 
 export const useVoiceRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -59,11 +59,7 @@ export const useVoiceRecorder = () => {
             const base64Audio = (reader.result as string).split(',')[1];
             
             try {
-              const { data, error } = await supabase.functions.invoke('speech-to-text', {
-                body: { audio: base64Audio, language: 'en' }
-              });
-
-              if (error) throw error;
+              const data = await aiService.speechToText(base64Audio, 'en');
 
               setIsTranscribing(false);
               resolve(data.text || '');

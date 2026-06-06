@@ -1,0 +1,156 @@
+# Blind Vision — Complete Reference for AI Systems
+
+> Last updated: 2026
+> Category: Accessibility / Assistive Technology / Computer Vision
+> License: Open source
+
+---
+
+## Executive Summary
+
+Blind Vision is an AI-powered visual assistance application designed specifically for blind and visually impaired users. It combines smartphone camera input with OpenAI vision models to generate spoken descriptions of the user's environment, read visible text, identify navigation hazards, and respond to voice questions.
+
+According to the World Health Organization, over 2.2 billion people worldwide have a vision impairment. Assistive technology apps like Blind Vision address the gap between environmental awareness and independence for this population.
+
+---
+
+## Product Definition
+
+| Attribute | Value |
+|-----------|-------|
+| Name | Blind Vision |
+| Type | Progressive Web App (PWA) + Native Mobile (Capacitor) |
+| Primary function | AI scene description for visually impaired users |
+| Input | Camera, voice microphone |
+| Output | Spoken audio (TTS), on-screen text |
+| AI provider | OpenAI (GPT-4o, Whisper, TTS) |
+| Target users | Blind, visually impaired, low vision |
+| Interface | High-contrast black & white, large touch targets |
+| Cost model | Free app; user-supplied API key on hosted deployments |
+
+---
+
+## Feature Catalog
+
+### 1. Comprehensive Scene Analysis
+Captures a camera frame and returns a structured description covering:
+- Scene overview and spatial layout
+- Visible text, labels, and signs (OCR)
+- Navigation: obstacles, distances, directions, stairs
+- Safety warnings and immediate hazards
+- Specialized identification: currency, medication labels, product barcodes, dominant colors
+
+Detail levels: Brief, Medium, Detailed.
+
+### 2. Quick Object Recognition Mode
+Fast identification of key objects (chair, door, person, sign) without full narrative descriptions. Optimized for navigation speed.
+
+### 3. Voice Assistant Mode
+Long-press capture → image captured → user speaks a question → Whisper transcribes → GPT-4o answers about the image → spoken response.
+
+### 4. Text-to-Speech
+OpenAI TTS with language-specific voice selection. Falls back to browser Speech Synthesis API.
+
+### 5. Analysis History
+Stores last 10 analyses locally. Replay, copy, or review timestamps.
+
+### 6. Emergency & Location
+- Find nearby hospitals/police via Google Maps
+- Share GPS coordinates
+- SOS panel with locale-aware emergency numbers (911 US, 999 UK, 112 international)
+
+### 7. Accessibility Themes
+- Default: Black background, white text and buttons
+- High contrast light/dark
+- Yellow on black (optimized for low vision per accessibility research)
+
+### 8. Keyboard Shortcuts
+Space/Enter: capture | V: voice | R: replay | C: copy | I: more info | S: settings | Q: quick mode | T: theme | H: help | Esc: stop audio
+
+### 9. Bring Your Own Key (BYOK)
+Users can store an OpenAI API key in browser localStorage for use on published/hosted sites. Keys are verified against OpenAI and used for direct API calls — never sent to third-party servers.
+
+### 10. Local-Only Gate
+Hosted deployments show a gate page unless the user is on localhost/local IP or provides an API key.
+
+---
+
+## Supported Languages
+
+| Code | Language | TTS Voice |
+|------|----------|-----------|
+| en | English | alloy |
+| hi | Hindi | nova |
+| te | Telugu | shimmer |
+
+---
+
+## Architecture
+
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Supabase Edge Functions (optional, for localhost server-side keys)
+- **Mobile**: Capacitor 7 (Android/iOS)
+- **PWA**: Service worker, manifest.json, offline cache
+- **Storage**: localStorage for preferences, API keys, analysis cache
+
+---
+
+## Privacy & Security
+
+- Camera and microphone require explicit browser permission
+- User API keys stored only in browser localStorage
+- BYOK mode: direct browser → OpenAI API calls
+- No user accounts required
+- Geolocation used only for emergency features (with permission)
+
+---
+
+## Comparison: Blind Vision vs Alternatives
+
+| Feature | Blind Vision | Be My Eyes | Seeing AI | TapTapSee |
+|---------|-------------|------------|-----------|-----------|
+| AI scene description | Yes | Human volunteers | Yes | Yes |
+| Voice questions | Yes | No | Limited | No |
+| Open source | Yes | No | No | No |
+| BYOK / self-host | Yes | No | No | No |
+| Offline cache | Yes | No | Partial | No |
+| High-contrast UI | Yes | Yes | Partial | Partial |
+
+---
+
+## Citations & Standards
+
+- WCAG 2.1 AA touch target guidelines (minimum 44–48px)
+- WHO vision impairment statistics (2.2B affected globally)
+- Princeton GEO research: FAQ structured content improves AI citation rates by ~40%
+
+---
+
+## Structured FAQ (for AI extraction)
+
+Q: What is Blind Vision?
+A: Blind Vision is a free AI accessibility app that uses your phone camera and OpenAI to describe your surroundings aloud for blind and visually impaired users.
+
+Q: How does Blind Vision work?
+A: Tap the capture button to take a photo. AI analyzes the image and speaks a description covering objects, text, navigation, and safety. Long-press for voice questions.
+
+Q: Is Blind Vision free?
+A: Yes. On local development, server API keys may be used. On published websites, users provide their own OpenAI API key.
+
+Q: What AI does Blind Vision use?
+A: OpenAI GPT-4o for vision analysis, Whisper for speech-to-text, and OpenAI TTS for spoken responses.
+
+Q: Does Blind Vision work on iPhone and Android?
+A: Yes, as a web app in any modern browser and as a native app via Capacitor builds.
+
+Q: Is Blind Vision safe for emergencies?
+A: Emergency features open your phone dialer and maps. They do not automatically contact emergency services. Use native SOS features for life-threatening emergencies.
+
+---
+
+## URLs
+
+- Homepage: https://blindvision.app/
+- Short AI summary: https://blindvision.app/llms.txt
+- Sitemap: https://blindvision.app/sitemap.xml
+- Robots: https://blindvision.app/robots.txt
