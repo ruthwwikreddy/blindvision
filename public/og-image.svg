@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Blind Vision - AI visual assistance">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Blind Vision - Founded by Ruthwik Reddy">
   <rect width="1200" height="630" fill="#000000"/>
-  <circle cx="600" cy="260" r="72" fill="none" stroke="#ffffff" stroke-width="8"/>
-  <circle cx="600" cy="260" r="24" fill="#ffffff"/>
-  <text x="600" y="400" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="64" font-weight="700">Blind Vision</text>
-  <text x="600" y="470" text-anchor="middle" fill="#aaaaaa" font-family="system-ui,sans-serif" font-size="32">AI visual assistance for blind &amp; visually impaired users</text>
+  <circle cx="600" cy="240" r="72" fill="none" stroke="#ffffff" stroke-width="8"/>
+  <circle cx="600" cy="240" r="24" fill="#ffffff"/>
+  <text x="600" y="380" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="64" font-weight="700">Blind Vision</text>
+  <text x="600" y="440" text-anchor="middle" fill="#aaaaaa" font-family="system-ui,sans-serif" font-size="32">AI visual assistance for blind &amp; visually impaired users</text>
+  <text x="600" y="520" text-anchor="middle" fill="#888888" font-family="system-ui,sans-serif" font-size="24">Founded by Ruthwik Reddy · ruthwikreddy.live</text>
 </svg>

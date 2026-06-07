@@ -19,4 +19,8 @@ export const SITE_KEYWORDS = [
   'object recognition accessibility',
   'low vision assistant',
   'screen reader companion',
+  'Ruthwik Reddy',
+  'ruthwikreddy.live',
 ].join(', ');
+
+export { FOUNDER_NAME, FOUNDER_URL, FOUNDER_CREDIT } from './founder';

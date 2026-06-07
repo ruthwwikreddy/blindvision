@@ -1,0 +1,14 @@
+/* humans.txt — founder & credits */
+/* https://ruthwikreddy.live/ */
+
+TEAM
+    Ruthwik Reddy — Founder & Developer — https://ruthwikreddy.live/
+
+SITE
+    Blind Vision — AI visual assistance for blind and visually impaired users
+    https://blindvision.app/
+
+CREDITS
+    Founded by Ruthwik Reddy
+    Portfolio: https://ruthwikreddy.live/
+    GitHub: https://github.com/ruthwwikreddy/blindvision

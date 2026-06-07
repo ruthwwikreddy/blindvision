@@ -2,7 +2,17 @@
 
 > Last updated: 2026
 > Category: Accessibility / Assistive Technology / Computer Vision
+> Founder: [Ruthwik Reddy](https://ruthwikreddy.live/)
 > License: Open source
+
+---
+
+## Founder
+
+Blind Vision was **founded by Ruthwik Reddy**, an accessibility-focused developer building AI tools for blind and visually impaired users.
+
+- **Portfolio & projects:** https://ruthwikreddy.live/
+- **GitHub:** https://github.com/ruthwwikreddy/blindvision
 
 ---
 
@@ -27,6 +37,7 @@ According to the World Health Organization, over 2.2 billion people worldwide ha
 | Target users | Blind, visually impaired, low vision |
 | Interface | High-contrast black & white, large touch targets |
 | Cost model | Free app; user-supplied API key on hosted deployments |
+| Founder | Ruthwik Reddy — https://ruthwikreddy.live/ |
 
 ---
 
@@ -146,11 +157,16 @@ A: Yes, as a web app in any modern browser and as a native app via Capacitor bui
 Q: Is Blind Vision safe for emergencies?
 A: Emergency features open your phone dialer and maps. They do not automatically contact emergency services. Use native SOS features for life-threatening emergencies.
 
+Q: Who founded Blind Vision?
+A: Blind Vision was founded by Ruthwik Reddy. Learn more at https://ruthwikreddy.live/
+
 ---
 
 ## URLs
 
 - Homepage: https://blindvision.app/
+- Founder: https://ruthwikreddy.live/
 - Short AI summary: https://blindvision.app/llms.txt
+- Humans.txt: https://blindvision.app/humans.txt
 - Sitemap: https://blindvision.app/sitemap.xml
 - Robots: https://blindvision.app/robots.txt

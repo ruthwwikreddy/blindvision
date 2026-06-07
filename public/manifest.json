@@ -1,7 +1,7 @@
 {
   "name": "Blind Vision — AI Visual Assistance",
   "short_name": "Blind Vision",
-  "description": "AI describes your surroundings aloud. Text reading, navigation guidance, and voice questions for blind and visually impaired users.",
+  "description": "AI describes your surroundings aloud. Founded by Ruthwik Reddy (ruthwikreddy.live). Free accessibility app for blind and visually impaired users.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

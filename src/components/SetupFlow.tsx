@@ -156,6 +156,12 @@ export const SetupFlow = ({
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-1 tracking-tight">Blind Vision</h1>
           <p className="text-muted-foreground text-sm">Your intelligent visual assistant</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Founded by{' '}
+            <a href="https://ruthwikreddy.live" target="_blank" rel="author noopener noreferrer" className="text-foreground underline underline-offset-2">
+              Ruthwik Reddy
+            </a>
+          </p>
         </div>
 
         {/* Progress Indicator */}

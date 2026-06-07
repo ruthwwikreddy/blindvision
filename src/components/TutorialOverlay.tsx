@@ -135,6 +135,12 @@ export const TutorialOverlay = ({ onComplete, speakText }: TutorialOverlayProps)
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
+          <p className="text-center text-xs text-muted-foreground pt-2">
+            Founded by{' '}
+            <a href="https://ruthwikreddy.live" target="_blank" rel="author noopener noreferrer" className="underline underline-offset-2">
+              Ruthwik Reddy
+            </a>
+          </p>
         </CardContent>
       </Card>
     </div>

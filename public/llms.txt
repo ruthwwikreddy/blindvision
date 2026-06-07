@@ -1,6 +1,13 @@
 # Blind Vision
 
-> AI-powered visual assistance app for blind and visually impaired users. Describes scenes aloud, reads text, guides navigation, and answers voice questions.
+> AI-powered visual assistance app for blind and visually impaired users. Founded by [Ruthwik Reddy](https://ruthwikreddy.live/).
+
+## Founder
+
+**Founded by Ruthwik Reddy** — accessibility developer and founder of Blind Vision.
+
+- Portfolio: https://ruthwikreddy.live/
+- Creator site: https://ruthwikreddy.live/
 
 ## What is Blind Vision?
 
@@ -55,12 +62,17 @@ English, Hindi, and Telugu for voice output. More languages planned.
 **Is it safe for emergencies?**
 Emergency features open your phone dialer and maps — they do not auto-call services. Always use native emergency features for life-threatening situations.
 
+**Who founded Blind Vision?**
+Blind Vision was founded by Ruthwik Reddy. Portfolio: https://ruthwikreddy.live/
+
 ## Links
 
-- Website: https://blindvision.app/
+- App: https://blindvision.app/
+- Founder: https://ruthwikreddy.live/
 - Full documentation for AI systems: https://blindvision.app/llms-full.txt
 - Sitemap: https://blindvision.app/sitemap.xml
+- Humans: https://blindvision.app/humans.txt
 
 ## Contact
 
-Open source accessibility project. Update VITE_SITE_URL when deploying to your domain.
+Founded by Ruthwik Reddy (https://ruthwikreddy.live/). Open source accessibility project.

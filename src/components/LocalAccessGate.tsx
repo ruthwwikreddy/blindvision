@@ -59,6 +59,16 @@ export const LocalAccessGate = ({ onAccessGranted }: LocalAccessGateProps) => {
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Blind Vision</h1>
           <p className="text-muted-foreground text-lg">AI-powered visual assistance</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Founded by{' '}
+            <a href="https://ruthwikreddy.live" target="_blank" rel="author noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
+              Ruthwik Reddy
+            </a>
+            {' · '}
+            <a href="https://ruthwikreddy.live" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
+              ruthwikreddy.live
+            </a>
+          </p>
         </div>
 
         <Card className="bv-surface-strong shadow-none">

@@ -3,6 +3,7 @@ import { SetupFlow } from '@/components/SetupFlow';
 import { EnhancedMainInterface } from '@/components/EnhancedMainInterface';
 import { SettingsMenu } from '@/components/SettingsMenu';
 import { LocalAccessGate } from '@/components/LocalAccessGate';
+import { FounderCredit } from '@/components/FounderCredit';
 import { isLocalEnvironment } from '@/lib/environment';
 import { hasUserApiKey } from '@/lib/apiKeys';
 
@@ -31,7 +32,12 @@ const Index = () => {
   }, []);
 
   if (!hasAccess) {
-    return <LocalAccessGate onAccessGranted={() => setHasAccess(true)} />;
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <LocalAccessGate onAccessGranted={() => setHasAccess(true)} />
+        <FounderCredit className="py-4 px-4" />
+      </div>
+    );
   }
 
   const handleSetupComplete = (selectedLanguage: string, selectedDetailLevel: string) => {
@@ -59,8 +65,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <a href="#main-content" className="skip-link">Skip to main content</a>
+      <div className="flex-1">
       {showSetup ? (
         <SetupFlow onComplete={handleSetupComplete} speakText={speakText} />
       ) : showSettings ? (
@@ -89,6 +96,8 @@ const Index = () => {
         />
         </div>
       )}
+      </div>
+      <FounderCredit className="py-4 px-4 border-t border-foreground/10" variant="compact" />
     </div>
   );
 };

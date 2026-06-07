@@ -58,3 +58,5 @@ Allow: /
 
 Sitemap: https://blindvision.app/sitemap.xml
 LLMs-Txt: https://blindvision.app/llms.txt
+
+# Founder: Ruthwik Reddy — https://ruthwikreddy.live/
